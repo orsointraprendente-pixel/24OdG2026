@@ -6,16 +6,16 @@
     <meta name="theme-color" content="#0e7490">
     <meta name="description" content="App per la gestione del torneo 24 Ore di Gabicce">
     <title>24OdG - Torneo Arbitri</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm';
 
         // ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
-        const SUPABASE_URL = 'https://guhlnzwxadkktizeebji.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1aGxuend4YWRra3RpemVlYmppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxODY3MzMsImV4cCI6MjA3NTc2MjczM30.2DAJu1IW4y2e3aRAygqwyOJNoG7KvYQummlUOw7VRa4';
+        const SUPABASE_URL = 'https://TUO-PROGETTO.supabase.co';
+        const SUPABASE_KEY = 'TUA_ANON_KEY_QUI';
 
         let supabase = null;
         let isConfigured = false;
@@ -878,10 +878,12 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             app.init();
+            
+            // Registra Service Worker per PWA
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(() => console.log('Service Worker registrato'))
-                    .catch(err => console.log('Service Worker errore:', err));
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(() => console.log('✅ PWA pronta!'))
+                    .catch(err => console.log('Service Worker:', err));
             }
         });
     </script>
