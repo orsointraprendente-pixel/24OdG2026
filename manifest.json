@@ -1,7 +1,7 @@
 {
-  "name": "24 Ore di Gabicce - Gestione Torneo",
+  "name": "24 Ore delle Grazie - Gestione Torneo",
   "short_name": "24OdG",
-  "description": "App per la gestione del torneo 24 Ore di Gabicce",
+  "description": "App per la gestione del torneo 24 Ore delle Grazie",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#111827",
