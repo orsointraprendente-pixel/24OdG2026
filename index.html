@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0e7490">
-    <meta name="description" content="App per la gestione del torneo 24 Ore di Gabicce">
-    <title>24OdG - Torneo Arbitri</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>Gestione Torneo - Arbitri</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script type="module">
@@ -28,6 +24,7 @@
         const app = {
             partite: [],
             squadre: {}, // { "Juventus": [{ numero: 7, nome: "Ronaldo" }, ...] }
+            filtroSlot: 'tutti',
             filtroCampo: 'tutti',
             connesso: false,
             vistaCorrente: 'partite',
@@ -141,6 +138,7 @@
             convertiDaDB(row) {
                 return {
                     id: row.id,
+                    slot: row.slot,
                     campo: row.campo || 1,
                     orario: row.orario || '',
                     squadraA: row.squadra_a,
@@ -161,6 +159,7 @@
 
             convertiPerDB(partita) {
                 return {
+                    slot: partita.slot,
                     campo: partita.campo,
                     orario: partita.orario,
                     squadra_a: partita.squadraA,
@@ -179,9 +178,9 @@
                 };
             },
 
-            async aggiungiPartita(campo, orario, squadraA, squadraB) {
+            async aggiungiPartita(slot, campo, orario, squadraA, squadraB) {
                 const nuova = {
-                    campo, orario, squadraA, squadraB,
+                    slot, campo, orario, squadraA, squadraB,
                     golA: [], golB: [],
                     scalpiA: [], scalpiB: [],
                     punteggioA: 0, punteggioB: 0,
@@ -393,7 +392,7 @@
 
                 document.getElementById('header').innerHTML = `
                     <div class="flex items-center justify-center gap-3 mb-2">
-                        <h1 class="text-3xl font-bold text-cyan-400">24OdG</h1>
+                        <h1 class="text-3xl font-bold text-cyan-400">Gestione Torneo</h1>
                         ${statusHtml}
                     </div>
                     ${!isConfigured ? '<div class="bg-yellow-900 border border-yellow-700 text-yellow-300 p-3 rounded-lg mb-4 text-sm">⚠️ <strong>Modalità Offline:</strong> Configura Supabase</div>' : ''}
@@ -414,7 +413,11 @@
                 document.getElementById('form').innerHTML = `
                     <div class="bg-gray-800 rounded-lg p-6 mb-6 shadow-xl border border-gray-700">
                         <h2 class="text-xl font-semibold mb-4 text-cyan-400">Nuova Partita</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Slot</label>
+                                <input type="number" id="slot" value="1" min="1" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                            </div>
                             <div>
                                 <label class="block text-sm mb-2 text-gray-300">Campo</label>
                                 <select id="campo" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
@@ -457,13 +460,14 @@
                 `;
 
                 document.getElementById('btnAggiungi').onclick = () => {
+                    const slot = parseInt(document.getElementById('slot').value);
                     const campo = parseInt(document.getElementById('campo').value);
                     const orario = document.getElementById('orario').value;
                     const squadraA = document.getElementById('squadraA').value.trim();
                     const squadraB = document.getElementById('squadraB').value.trim();
                     
                     if (squadraA && squadraB) {
-                        this.aggiungiPartita(campo, orario, squadraA, squadraB);
+                        this.aggiungiPartita(slot, campo, orario, squadraA, squadraB);
                         if (squadreDisponibili.length > 0) {
                             document.getElementById('squadraA').value = '';
                             document.getElementById('squadraB').value = '';
@@ -730,19 +734,40 @@
                 if (this.sottovistaPartite === 'da_giocare') partiteFiltrate = this.partite.filter(p => !p.completata);
                 else if (this.sottovistaPartite === 'completate') partiteFiltrate = this.partite.filter(p => p.completata);
 
+                const slots = [...new Set(partiteFiltrate.map(p => p.slot))].sort((a, b) => a - b);
                 const campi = [...new Set(partiteFiltrate.map(p => p.campo))].sort((a, b) => a - b);
 
                 document.getElementById('filtri').innerHTML = `
-                    ${campi.length > 0 ? `
-                        <div class="mb-6">
-                            <label class="block text-sm mb-2 text-gray-300">Filtra per Campo</label>
-                            <select id="selectCampo" class="bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white w-full">
-                                <option value="tutti">Tutti i campi</option>
-                                ${campi.map(c => `<option value="${c}">Campo ${c}</option>`).join('')}
-                            </select>
-                        </div>
-                    ` : ''}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        ${slots.length > 0 ? `
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Filtra per Slot</label>
+                                <select id="selectSlot" class="bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white w-full">
+                                    <option value="tutti">Tutti gli slot</option>
+                                    ${slots.map(s => `<option value="${s}">Slot ${s}</option>`).join('')}
+                                </select>
+                            </div>
+                        ` : ''}
+                        ${campi.length > 0 ? `
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Filtra per Campo</label>
+                                <select id="selectCampo" class="bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white w-full">
+                                    <option value="tutti">Tutti i campi</option>
+                                    ${campi.map(c => `<option value="${c}">Campo ${c}</option>`).join('')}
+                                </select>
+                            </div>
+                        ` : ''}
+                    </div>
                 `;
+
+                if (slots.length > 0) {
+                    const selectSlot = document.getElementById('selectSlot');
+                    selectSlot.value = this.filtroSlot;
+                    selectSlot.onchange = (e) => {
+                        this.filtroSlot = e.target.value;
+                        this.renderListaPartite();
+                    };
+                }
 
                 if (campi.length > 0) {
                     const selectCampo = document.getElementById('selectCampo');
@@ -760,6 +785,7 @@
                 if (this.sottovistaPartite === 'da_giocare') partite = partite.filter(p => !p.completata);
                 else if (this.sottovistaPartite === 'completate') partite = partite.filter(p => p.completata);
 
+                if (this.filtroSlot !== 'tutti') partite = partite.filter(p => p.slot === parseInt(this.filtroSlot));
                 if (this.filtroCampo !== 'tutti') partite = partite.filter(p => p.campo === parseInt(this.filtroCampo));
 
                 // Raggruppa per orario e campo
@@ -854,13 +880,6 @@
                                         <div class="text-3xl font-bold text-cyan-400">${p.punteggioB}</div>
                                         <div class="text-sm text-gray-400 mt-2">Punti: ${p.puntiB}</div>
                                         ${p.mvpB ? `<div class="text-sm text-purple-400 mt-2">⭐ MVP: ${p.mvpB}</div>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `}
-                    </div>
-                `;
-            },400 mt-2">⭐ MVP: ${p.mvpB}</div>` : ''}
                                     </div>
                                 </div>
                             </div>
@@ -1022,16 +1041,7 @@
             }
         };
 
-        window.addEventListener('DOMContentLoaded', () => {
-            app.init();
-            
-            // Registra Service Worker per PWA
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(() => console.log('Service Worker registrato'))
-                    .catch(err => console.log('Service Worker errore:', err));
-            }
-        });
+        window.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
