@@ -13,7 +13,7 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm';
 
-        // ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
+          // ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
         const SUPABASE_URL = 'https://bflagmexshprrbigcjzj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTk3MDMsImV4cCI6MjA3NTc5NTcwM30.29WDB3dfj9a2jOjTJRT28nQcjMqEXoDdfWXTWMNJbE8';
 
@@ -35,26 +35,41 @@
             sottovistaPartite: 'tutte',
 
             async init() {
+                console.log('🚀 Inizializzazione app...');
                 this.renderNav();
                 this.renderHeader();
                 
                 if (isConfigured) {
-                    await this.caricaPartite();
+                    console.log('✅ Supabase configurato, carico dati...');
                     await this.caricaSquadre();
+                    await this.caricaPartite();
                     this.sottoscriviAggiornamenti();
+                    
+                    // Aggiorna header dopo il caricamento
+                    this.renderHeader();
+                    console.log('✅ Dati caricati, app pronta!');
+                } else {
+                    console.log('⚠️ Modalità offline - configura Supabase');
                 }
                 
                 this.renderContenuto();
             },
 
             async caricaSquadre() {
-                if (!isConfigured) return;
+                if (!isConfigured) {
+                    console.log('⚠️ Supabase non configurato - skip caricamento squadre');
+                    return;
+                }
                 try {
+                    console.log('📥 Caricamento squadre da Supabase...');
                     const { data, error } = await supabase.from('squadre').select('*');
+                    
                     if (error) {
-                        console.log('Tabella squadre non trovata');
+                        console.error('❌ Errore caricamento squadre:', error);
                         return;
                     }
+                    
+                    console.log(`✅ Ricevute ${data.length} righe dalla tabella squadre`);
                     
                     this.squadre = {};
                     data.forEach(row => {
@@ -66,8 +81,12 @@
                             nome: row.nome_giocatore
                         });
                     });
+                    
+                    console.log(`✅ Squadre caricate: ${Object.keys(this.squadre).length}`);
+                    console.log('Squadre:', Object.keys(this.squadre));
+                    
                 } catch (error) {
-                    console.error('Errore caricamento squadre:', error);
+                    console.error('❌ Eccezione caricamento squadre:', error);
                 }
             },
 
