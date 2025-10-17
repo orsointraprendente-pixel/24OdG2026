@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0e7490">
-    <meta name="description" content="App per la gestione del torneo 24 Ore delleGrazei">
+    <meta name="description" content="App per la gestione del torneo 24 Ore di Gabicce">
     <title>24OdG - Torneo Arbitri</title>
     
     <!-- PWA Manifest (IMPORTANTE - prima di altri link!) -->
@@ -21,7 +21,7 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm';
 
-      // ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
+        // ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
         const SUPABASE_URL = 'https://bflagmexshprrbigcjzj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTk3MDMsImV4cCI6MjA3NTc5NTcwM30.29WDB3dfj9a2jOjTJRT28nQcjMqEXoDdfWXTWMNJbE8';
 
@@ -33,6 +33,21 @@
             isConfigured = true;
         }
 
+        // ⚠️ WHITELIST ARBITRI AUTORIZZATI - MODIFICA QUI
+        const ARBITRI_AUTORIZZATI = [
+            'arbitro1@24odg.it',
+            'arbitro2@24odg.it',
+            'arbitro3@24odg.it',
+            'arbitro4@24odg.it',
+            'arbitro5@24odg.it',
+            'arbitro6@24odg.it',
+            'arbitro7@24odg.it',
+            'arbitro8@24odg.it',
+        ];
+        
+        // Email di test (rimuovi prima del torneo vero!)
+        const EMAIL_TEST = 'test@24odg.test';
+
         const app = {
             partite: [],
             squadre: {},
@@ -40,19 +55,34 @@
             connesso: false,
             vistaCorrente: 'partite',
             sottovistaPartite: 'tutte',
+            utenteAutenticato: null,
+            email: '',
 
             async init() {
                 console.log('🚀 Inizializzazione app...');
+                
+                // Verifica se c'è un utente autenticato
+                const emailSalvata = localStorage.getItem('24odg_email');
+                if (emailSalvata) {
+                    this.utenteAutenticato = emailSalvata;
+                    this.email = emailSalvata;
+                    console.log('✅ Utente autenticato:', emailSalvata);
+                }
+                
                 this.renderNav();
                 this.renderHeader();
+                
+                // Se non autenticato, mostra login
+                if (!this.utenteAutenticato) {
+                    this.renderLogin();
+                    return;
+                }
                 
                 if (isConfigured) {
                     console.log('✅ Supabase configurato, carico dati...');
                     await this.caricaSquadre();
                     await this.caricaPartite();
                     this.sottoscriviAggiornamenti();
-                    
-                    // Aggiorna header dopo il caricamento
                     this.renderHeader();
                     console.log('✅ Dati caricati, app pronta!');
                 } else {
@@ -60,6 +90,170 @@
                 }
                 
                 this.renderContenuto();
+            },
+
+            async login(email) {
+                // Validazione email semplice
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    alert('❌ Email non valida!');
+                    return;
+                }
+                
+                // Normalizza email (minuscole e trim)
+                const emailNormalizzata = email.toLowerCase().trim();
+                
+                // Crea array di email autorizzate (whitelist + test)
+                const emailAutorizzate = [...ARBITRI_AUTORIZZATI, EMAIL_TEST];
+                
+                console.log('🔍 Tentativo login:', emailNormalizzata);
+                console.log('📋 Email autorizzate:', emailAutorizzate);
+                console.log('✓ Email trovata?', emailAutorizzate.includes(emailNormalizzata));
+                
+                // Controlla rigorosamente whitelist
+                if (!emailAutorizzate.includes(emailNormalizzata)) {
+                    console.warn('❌ Accesso rifiutato:', emailNormalizzata);
+                    alert(`❌ Email non autorizzata!\n\n"${emailNormalizzata}"\n\nContatta l'organizzatore per registrarti.`);
+                    return;
+                }
+                
+                // Salva email nel localStorage
+                localStorage.setItem('24odg_email', emailNormalizzata);
+                this.utenteAutenticato = emailNormalizzata;
+                this.email = emailNormalizzata;
+                
+                console.log('✅ Accesso effettuato:', emailNormalizzata);
+                alert(`✅ Benvenuto ${emailNormalizzata}!`);
+                
+                // Ricarica app
+                this.init();
+            },
+
+            logout() {
+                if (confirm('Vuoi disconnetterti?')) {
+                    localStorage.removeItem('24odg_email');
+                    this.utenteAutenticato = null;
+                    this.email = '';
+                    alert('👋 Arrivederci!');
+                    location.reload();
+                }
+            },
+
+            renderLogin() {
+                document.getElementById('nav').innerHTML = '';
+                document.getElementById('header').innerHTML = `
+                    <div class="flex items-center justify-center gap-3 mb-2">
+                        <h1 class="text-3xl font-bold text-cyan-400">24OdG</h1>
+                    </div>
+                `;
+                
+                document.getElementById('contenuto').innerHTML = `
+                    <div class="flex items-center justify-center min-h-96">
+                        <div class="bg-gray-800 rounded-lg p-8 shadow-xl border border-gray-700 w-full max-w-md">
+                            <h2 class="text-2xl font-bold text-center mb-2 text-cyan-400">Accedi all'App</h2>
+                            <p class="text-center text-gray-400 text-sm mb-6">24 Ore di Gabicce - Gestione Torneo</p>
+                            
+                            <div class="mb-6">
+                                <label class="block text-sm mb-2 text-gray-300">Email Arbitro</label>
+                                <input 
+                                    type="email" 
+                                    id="loginEmail" 
+                                    placeholder="arbitro@24odg.it" 
+                                    class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
+                                    onkeypress="if(event.key==='Enter') app.login(document.getElementById('loginEmail').value)"
+                                    autocomplete="email"
+                                >
+                            </div>
+                            
+                            <button 
+                                id="btnLogin"
+                                class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded transition mb-4"
+                            >
+                                🔐 Accedi
+                            </button>
+                            
+                            <p class="text-center text-gray-400 text-sm mt-6 mb-2">Non sei registrato?</p>
+                            <p class="text-center text-gray-500 text-xs">Contatta l'organizzatore per ricevere i dati di accesso</p>
+                            
+                            <div class="mt-8 pt-6 border-t border-gray-700">
+                                <p class="text-gray-400 text-sm mb-2">🧪 Modalità Test:</p>
+                                <button 
+                                    id="btnTest"
+                                    class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-2 px-4 rounded transition text-sm"
+                                >
+                                    Accedi con: test@24odg.test
+                                </button>
+                            </div>
+                            
+                            <div class="mt-6 pt-6 border-t border-gray-700">
+                                <p class="text-gray-500 text-xs text-center">
+                                    🔒 Solo arbitri autorizzati possono accedere<br>
+                                    📱 I tuoi dati restano nel tuo dispositivo
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('btnLogin').onclick = () => {
+                    const email = document.getElementById('loginEmail').value.trim();
+                    if (email) {
+                        this.login(email);
+                    } else {
+                        alert('Inserisci la tua email!');
+                    }
+                };
+                
+                document.getElementById('btnTest').onclick = () => {
+                    this.login(EMAIL_TEST);
+                };
+            },
+
+            renderNav() {
+                if (!this.utenteAutenticato) return;
+                
+                document.getElementById('nav').innerHTML = `
+                    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                        <button data-vista="partite" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'partite' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">📋 Partite</button>
+                        <button data-vista="squadre" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'squadre' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">👥 Squadre</button>
+                        <button data-vista="classifica" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'classifica' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">🏆 Classifica</button>
+                        <button data-vista="statistiche" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'statistiche' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">📊 Statistiche</button>
+                        <button id="btnLogout" class="px-4 py-2 rounded font-semibold whitespace-nowrap bg-red-900 text-red-300 hover:bg-red-800 ml-auto">🚪 Esci</button>
+                    </div>
+                `;
+                
+                document.querySelectorAll('[data-vista]').forEach(btn => {
+                    btn.onclick = () => {
+                        this.vistaCorrente = btn.dataset.vista;
+                        this.renderNav();
+                        this.renderContenuto();
+                    };
+                });
+                
+                document.getElementById('btnLogout').onclick = () => this.logout();
+            },
+
+            renderHeader() {
+                if (!this.utenteAutenticato) return;
+                
+                const completate = this.partite.filter(p => p.completata).length;
+                const statusHtml = isConfigured ? `
+                    <div class="flex items-center gap-1 px-3 py-1 rounded-full text-sm ${this.connesso ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}">
+                        ${this.connesso ? '📶' : '📵'} ${this.connesso ? 'Online' : 'Offline'}
+                    </div>
+                ` : '';
+                
+                document.getElementById('header').innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <h1 class="text-3xl font-bold text-cyan-400">24OdG</h1>
+                            ${statusHtml}
+                        </div>
+                        <div class="text-sm text-gray-400">👤 ${this.email}</div>
+                    </div>
+                    ${!isConfigured ? '<div class="bg-yellow-900 border border-yellow-700 text-yellow-300 p-3 rounded-lg mb-4 text-sm">⚠️ <strong>Modalità Offline:</strong> Configura Supabase</div>' : ''}
+                    <p class="text-center text-gray-400">Partite: ${this.partite.length} | Completate: ${completate} | Squadre: ${Object.keys(this.squadre).length}</p>
+                `;
             },
 
             async caricaSquadre() {
