@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0e7490">
-    <meta name="description" content="App per la gestione del torneo 24 Ore di Gabicce">
+    <meta name="description" content="App per la gestione del torneo 24 Ore delle Grazie">
     <title>24OdG - Torneo Arbitri</title>
     
     <!-- PWA Manifest (IMPORTANTE - prima di altri link!) -->
@@ -21,9 +21,9 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm';
 
-        // ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
-        const SUPABASE_URL = 'https://TUO-PROGETTO.supabase.co';
-        const SUPABASE_KEY = 'TUA_ANON_KEY_QUI';
+          // ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
+        const SUPABASE_URL = 'https://bflagmexshprrbigcjzj.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTk3MDMsImV4cCI6MjA3NTc5NTcwM30.29WDB3dfj9a2jOjTJRT28nQcjMqEXoDdfWXTWMNJbE8';
 
         let supabase = null;
         let isConfigured = false;
@@ -35,7 +35,7 @@
 
         // ⚠️ WHITELIST ARBITRI AUTORIZZATI - MODIFICA QUI
         const ARBITRI_AUTORIZZATI = [
-            'arbitro1@24odg.it',
+            'stepengo@gmail.com',
             'arbitro2@24odg.it',
             'arbitro3@24odg.it',
             'arbitro4@24odg.it',
