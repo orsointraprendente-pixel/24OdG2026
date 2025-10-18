@@ -57,17 +57,9 @@
             sottovistaPartite: 'tutte',
             utenteAutenticato: null,
             email: '',
-            deferredPrompt: null,
-            pwaInstallata: false,
 
             async init() {
                 console.log('🚀 Inizializzazione app...');
-                
-                // Verifica se PWA è già installata
-                if (window.navigator.standalone === true) {
-                    this.pwaInstallata = true;
-                    console.log('✅ PWA già installata (standalone mode)');
-                }
                 
                 // Verifica se c'è un utente autenticato
                 const emailSalvata = localStorage.getItem('24odg_email');
@@ -98,79 +90,6 @@
                 }
                 
                 this.renderContenuto();
-                
-                // Mostra banner PWA se non è già installata
-                if (!this.pwaInstallata) {
-                    this.mostraBannerPWA();
-                }
-            },
-
-            mostraBannerPWA() {
-                // Crea banner PWA
-                const banner = document.createElement('div');
-                banner.id = 'pwa-install-banner';
-                banner.className = 'fixed top-0 left-0 right-0 bg-gradient-to-r from-cyan-600 to-cyan-700 text-white p-4 shadow-lg z-50 flex items-center justify-between gap-4';
-                banner.innerHTML = `
-                    <div class="flex items-center gap-3 flex-1">
-                        <span class="text-2xl">📱</span>
-                        <div>
-                            <p class="font-bold">Installa l'App</p>
-                            <p class="text-sm opacity-90">Accedi più velocemente al torneo</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button id="pwa-install-btn" class="bg-white text-cyan-600 font-bold px-6 py-2 rounded hover:bg-gray-100 transition">
-                            Installa
-                        </button>
-                        <button id="pwa-close-btn" class="bg-cyan-500 hover:bg-cyan-400 px-4 py-2 rounded transition">
-                            ✕
-                        </button>
-                    </div>
-                `;
-                
-                document.body.insertBefore(banner, document.body.firstChild);
-                
-                // Aggiungi spazio all'inizio della pagina
-                document.body.style.paddingTop = '80px';
-                
-                // Event listener per chiudere banner
-                document.getElementById('pwa-close-btn').onclick = () => {
-                    banner.remove();
-                    document.body.style.paddingTop = '0';
-                    localStorage.setItem('24odg_pwa_banner_closed', Date.now());
-                };
-                
-                // Event listener per installare
-                document.getElementById('pwa-install-btn').onclick = () => {
-                    if (this.deferredPrompt) {
-                        this.deferredPrompt.prompt();
-                        this.deferredPrompt.userChoice.then((choiceResult) => {
-                            if (choiceResult.outcome === 'accepted') {
-                                console.log('✅ PWA installata dall\'utente');
-                                banner.remove();
-                                document.body.style.paddingTop = '0';
-                                this.pwaInstallata = true;
-                            }
-                            this.deferredPrompt = null;
-                        });
-                    } else {
-                        // Fallback: mostra istruzioni
-                        this.mostraIstruzioniInstallazione();
-                    }
-                };
-            },
-
-            mostraIstruzioniInstallazione() {
-                alert(`📱 Come installare l'app:\n\n
-🖥️ Su Chrome/Edge:\n
-• Clicca sui 3 puntini (menu)\n
-• Seleziona "Installa app"\n\n
-📱 Su Safari (iPhone):\n
-• Tocca Condividi\n
-• Scorri e tocca "Aggiungi a Home"\n\n
-🤖 Su Android Chrome:\n
-• Tocca i 3 puntini\n
-• Tocca "Installa app"`);
             },
 
             async login(email) {
