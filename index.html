@@ -413,6 +413,10 @@
                     golB: row.gol_b || [],
                     scalpiA: row.scalpi_a || [],
                     scalpiB: row.scalpi_b || [],
+                    scalpiVuotiA: row.scalpi_vuoti_a || [],
+                    scalpiVuotiB: row.scalpi_vuoti_b || [],
+                    giocatoriEspulsiA: row.giocatori_espulsi_a || [],
+                    giocatoriEspulsiB: row.giocatori_espulsi_b || [],
                     punteggioA: row.punteggio_a || 0,
                     punteggioB: row.punteggio_b || 0,
                     puntiA: row.punti_a || 0,
@@ -433,6 +437,10 @@
                     gol_b: partita.golB,
                     scalpi_a: partita.scalpiA,
                     scalpi_b: partita.scalpiB,
+                    scalpi_vuoti_a: partita.scalpiVuotiA,
+                    scalpi_vuoti_b: partita.scalpiVuotiB,
+                    giocatori_espulsi_a: partita.giocatoriEspulsiA,
+                    giocatori_espulsi_b: partita.giocatoriEspulsiB,
                     punteggio_a: partita.punteggioA,
                     punteggio_b: partita.punteggioB,
                     punti_a: partita.puntiA,
@@ -447,6 +455,8 @@
                 const nuova = {
                     campo, orario, squadraA, squadraB,
                     golA: [], golB: [], scalpiA: [], scalpiB: [],
+                    scalpiVuotiA: [], scalpiVuotiB: [],
+                    giocatoriEspulsiA: [], giocatoriEspulsiB: [],
                     punteggioA: 0, punteggioB: 0, puntiA: 0, puntiB: 0,
                     mvpA: '', mvpB: '', completata: false
                 };
@@ -455,6 +465,42 @@
                 } else {
                     this.partite.push({ ...nuova, id: Date.now() });
                     this.renderContenuto();
+                }
+            },
+
+            aggiungiScalpoVuoto(id, squadra, giocatore) {
+                const partita = this.partite.find(p => p.id === id);
+                if (!partita) return;
+                
+                const nuoviScalpiVuoti = [...partita[`scalpiVuoti${squadra}`], giocatore];
+                const conteggioVuoti = nuoviScalpiVuoti.filter(g => g === giocatore).length;
+                
+                let aggiornamenti = { [`scalpiVuoti${squadra}`]: nuoviScalpiVuoti };
+                
+                // Se arriva al terzo scalpo vuoto, espelli il giocatore
+                if (conteggioVuoti === 3) {
+                    const nuoviEspulsi = [...partita[`giocatoriEspulsi${squadra}`], giocatore];
+                    aggiornamenti[`giocatoriEspulsi${squadra}`] = nuoviEspulsi;
+                    alert(`🔴 ${giocatore} espulso temporaneamente! Ha fatto 3 scalpi vuoti.`);
+                }
+                
+                this.aggiornaPartita(id, aggiornamenti);
+            },
+
+            rimuoviScalpoVuoto(id, squadra, index) {
+                const partita = this.partite.find(p => p.id === id);
+                const nuoviScalpiVuoti = [...partita[`scalpiVuoti${squadra}`]];
+                nuoviScalpiVuoti.splice(index, 1);
+                this.aggiornaPartita(id, { [`scalpiVuoti${squadra}`]: nuoviScalpiVuoti });
+            },
+
+            azzzeraScalpiVuoti(id, squadra) {
+                if (confirm(`Azzerare tutti gli scalpi vuoti della ${squadra}?`)) {
+                    this.aggiornaPartita(id, { 
+                        [`scalpiVuoti${squadra}`]: [],
+                        [`giocatoriEspulsi${squadra}`]: []
+                    });
+                    alert('✅ Scalpi vuoti e espulsioni azzerati!');
                 }
             },
 
@@ -1194,6 +1240,21 @@
                     }
                 };
                 
+                // Scalpi Vuoti
+                const btnVuoto = document.querySelector(`[data-add-vuoto="${p.id}-${squadra}"]`);
+                if (btnVuoto) btnVuoto.onclick = () => {
+                    const input = document.getElementById(`scalpo-vuoto-${squadra}-${p.id}`);
+                    const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
+                    if (valore) {
+                        this.aggiungiScalpoVuoto(p.id, squadra, valore);
+                        input.value = '';
+                    }
+                };
+                
+                // Azzera Scalpi Vuoti
+                const btnAzzera = document.querySelector(`[data-azzera-vuoti="${p.id}-${squadra}"]`);
+                if (btnAzzera) btnAzzera.onclick = () => this.azzzeraScalpiVuoti(p.id, squadra);
+                
                 // Elimina gol
                 p[`gol${squadra}`].forEach((_, i) => {
                     const btn = document.querySelector(`[data-del-gol="${p.id}-${squadra}-${i}"]`);
@@ -1212,6 +1273,12 @@
                         nuoviScalpi.splice(i, 1);
                         this.aggiornaPartita(p.id, { [`scalpi${squadra}`]: nuoviScalpi });
                     };
+                });
+                
+                // Elimina scalpi vuoti
+                (p[`scalpiVuoti${squadra}`] || []).forEach((_, i) => {
+                    const btn = document.querySelector(`[data-del-vuoto="${p.id}-${squadra}-${i}"]`);
+                    if (btn) btn.onclick = () => this.rimuoviScalpoVuoto(p.id, squadra, i);
                 });
             }
         };
