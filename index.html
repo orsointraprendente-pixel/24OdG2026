@@ -139,6 +139,22 @@
                 }
             },
 
+            mostraIstruzioniInstallazione() {
+                alert(`📱 INSTALLA L'APP\n\n
+🖥️ Su CHROME/EDGE:\n
+• Clicca i 3 puntini (menu)\n
+• Seleziona "Installa app"\n
+• Oppure guarda la barra indirizzi\n\n
+📱 Su SAFARI (iPhone/iPad):\n
+• Tocca Condividi\n
+• Scorri fino a "Aggiungi a Home"\n
+• Tocca\n\n
+🤖 Su ANDROID CHROME:\n
+• Clicca i 3 puntini\n
+• Seleziona "Installa app"\n
+• Oppure "Aggiungi a Home"`);
+            },
+
             renderLogin() {
                 document.getElementById('nav').innerHTML = '';
                 document.getElementById('header').innerHTML = `
@@ -218,7 +234,8 @@
                         <button data-vista="squadre" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'squadre' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">👥 Squadre</button>
                         <button data-vista="classifica" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'classifica' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">🏆 Classifica</button>
                         <button data-vista="statistiche" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'statistiche' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">📊 Statistiche</button>
-                        <button id="btnLogout" class="px-4 py-2 rounded font-semibold whitespace-nowrap bg-red-900 text-red-300 hover:bg-red-800 ml-auto">🚪 Esci</button>
+                        <button id="btnInstallaPWA" class="px-4 py-2 rounded font-semibold whitespace-nowrap bg-purple-900 text-purple-300 hover:bg-purple-800 ml-auto">📱 Installa App</button>
+                        <button id="btnLogout" class="px-4 py-2 rounded font-semibold whitespace-nowrap bg-red-900 text-red-300 hover:bg-red-800">🚪 Esci</button>
                     </div>
                 `;
                 
@@ -231,6 +248,26 @@
                 });
                 
                 document.getElementById('btnLogout').onclick = () => this.logout();
+                
+                // Pulsante installa PWA
+                const btnInstalla = document.getElementById('btnInstallaPWA');
+                if (btnInstalla) {
+                    btnInstalla.onclick = () => {
+                        if (window.deferredPrompt) {
+                            window.deferredPrompt.prompt();
+                            window.deferredPrompt.userChoice.then((choiceResult) => {
+                                if (choiceResult.outcome === 'accepted') {
+                                    console.log('✅ PWA installata');
+                                    btnInstalla.textContent = '✅ App Installata';
+                                    btnInstalla.disabled = true;
+                                }
+                                window.deferredPrompt = null;
+                            });
+                        } else {
+                            this.mostraIstruzioniInstallazione();
+                        }
+                    };
+                }
             },
 
             renderHeader() {
