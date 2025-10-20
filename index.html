@@ -5,23 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0e7490">
     <meta name="description" content="App per la gestione del torneo 24 Ore di Gabicce">
-    <title>24 Ore delle Grazie - Gestione Torneo</title>
-    
-    <!-- PWA Manifest (IMPORTANTE - prima di altri link!) -->
+    <title>24OdG - Torneo Arbitri</title>
     <link rel="manifest" href="./manifest.json">
-    
-    <!-- Favicon usando le icone PWA -->
-    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
-    <link rel="shortcut icon" href="./icon-192.png">
-    
+    <link rel="apple-touch-icon" href="./icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm';
 
-        // ⚠️ SOSTITUISCI QUESTI VALORI CON I TUOI DA SUPABASE
         const SUPABASE_URL = 'https://bflagmexshprrbigcjzj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTk3MDMsImV4cCI6MjA3NTc5NTcwM30.29WDB3dfj9a2jOjTJRT28nQcjMqEXoDdfWXTWMNJbE8';
 
@@ -33,21 +24,6 @@
             isConfigured = true;
         }
 
-        // ⚠️ WHITELIST ARBITRI AUTORIZZATI - MODIFICA QUI
-        const ARBITRI_AUTORIZZATI = [
-            'arbitro1@24odg.it',
-            'arbitro2@24odg.it',
-            'arbitro3@24odg.it',
-            'arbitro4@24odg.it',
-            'arbitro5@24odg.it',
-            'arbitro6@24odg.it',
-            'arbitro7@24odg.it',
-            'arbitro8@24odg.it',
-        ];
-        
-        // Email di test (rimuovi prima del torneo vero!)
-        const EMAIL_TEST = 'test@24odg.test';
-
         const app = {
             partite: [],
             squadre: {},
@@ -55,28 +31,11 @@
             connesso: false,
             vistaCorrente: 'partite',
             sottovistaPartite: 'tutte',
-            utenteAutenticato: null,
-            email: '',
 
             async init() {
                 console.log('🚀 Inizializzazione app...');
-                
-                // Verifica se c'è un utente autenticato
-                const emailSalvata = localStorage.getItem('24odg_email');
-                if (emailSalvata) {
-                    this.utenteAutenticato = emailSalvata;
-                    this.email = emailSalvata;
-                    console.log('✅ Utente autenticato:', emailSalvata);
-                }
-                
                 this.renderNav();
                 this.renderHeader();
-                
-                // Se non autenticato, mostra login
-                if (!this.utenteAutenticato) {
-                    this.renderLogin();
-                    return;
-                }
                 
                 if (isConfigured) {
                     console.log('✅ Supabase configurato, carico dati...');
@@ -90,207 +49,6 @@
                 }
                 
                 this.renderContenuto();
-            },
-
-            async login(email) {
-                // Validazione email semplice
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(email)) {
-                    alert('❌ Email non valida!');
-                    return;
-                }
-                
-                // Normalizza email (minuscole e trim)
-                const emailNormalizzata = email.toLowerCase().trim();
-                
-                // Crea array di email autorizzate (whitelist + test)
-                const emailAutorizzate = [...ARBITRI_AUTORIZZATI, EMAIL_TEST];
-                
-                console.log('🔍 Tentativo login:', emailNormalizzata);
-                console.log('📋 Email autorizzate:', emailAutorizzate);
-                console.log('✓ Email trovata?', emailAutorizzate.includes(emailNormalizzata));
-                
-                // Controlla rigorosamente whitelist
-                if (!emailAutorizzate.includes(emailNormalizzata)) {
-                    console.warn('❌ Accesso rifiutato:', emailNormalizzata);
-                    alert(`❌ Email non autorizzata!\n\n"${emailNormalizzata}"\n\nContatta l'organizzatore per registrarti.`);
-                    return;
-                }
-                
-                // Salva email nel localStorage
-                localStorage.setItem('24odg_email', emailNormalizzata);
-                this.utenteAutenticato = emailNormalizzata;
-                this.email = emailNormalizzata;
-                
-                console.log('✅ Accesso effettuato:', emailNormalizzata);
-                alert(`✅ Benvenuto ${emailNormalizzata}!`);
-                
-                // Ricarica app
-                this.init();
-            },
-
-            logout() {
-                if (confirm('Vuoi disconnetterti?')) {
-                    localStorage.removeItem('24odg_email');
-                    this.utenteAutenticato = null;
-                    this.email = '';
-                    alert('👋 Arrivederci!');
-                    location.reload();
-                }
-            },
-
-            mostraIstruzioniInstallazione() {
-                alert(`📱 INSTALLA L'APP\n\n
-🖥️ Su CHROME/EDGE:\n
-• Clicca i 3 puntini (menu)\n
-• Seleziona "Installa app"\n
-• Oppure guarda la barra indirizzi\n\n
-📱 Su SAFARI (iPhone/iPad):\n
-• Tocca Condividi\n
-• Scorri fino a "Aggiungi a Home"\n
-• Tocca\n\n
-🤖 Su ANDROID CHROME:\n
-• Clicca i 3 puntini\n
-• Seleziona "Installa app"\n
-• Oppure "Aggiungi a Home"`);
-            },
-
-            renderLogin() {
-                document.getElementById('nav').innerHTML = '';
-                document.getElementById('header').innerHTML = `
-                    <div class="flex items-center justify-center gap-3 mb-2">
-                        <h1 class="text-3xl font-bold text-cyan-400">24 Ore delle Grazie</h1>
-                    </div>
-                `;
-                
-                document.getElementById('contenuto').innerHTML = `
-                    <div class="flex items-center justify-center min-h-96">
-                        <div class="bg-gray-800 rounded-lg p-8 shadow-xl border border-gray-700 w-full max-w-md">
-                            <h2 class="text-2xl font-bold text-center mb-2 text-cyan-400">Accedi all'App</h2>
-                            <p class="text-center text-gray-400 text-sm mb-6">24 Ore delle Grazie - Gestione Torneo</p>
-                            
-                            <div class="mb-6">
-                                <label class="block text-sm mb-2 text-gray-300">Email Arbitro</label>
-                                <input 
-                                    type="email" 
-                                    id="loginEmail" 
-                                    placeholder="arbitro@24odg.it" 
-                                    class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
-                                    onkeypress="if(event.key==='Enter') app.login(document.getElementById('loginEmail').value)"
-                                    autocomplete="email"
-                                >
-                            </div>
-                            
-                            <button 
-                                id="btnLogin"
-                                class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded transition mb-4"
-                            >
-                                🔐 Accedi
-                            </button>
-                            
-                            <p class="text-center text-gray-400 text-sm mt-6 mb-2">Non sei registrato?</p>
-                            <p class="text-center text-gray-500 text-xs">Contatta l'organizzatore per ricevere i dati di accesso</p>
-                            
-                            <div class="mt-8 pt-6 border-t border-gray-700">
-                                <p class="text-gray-400 text-sm mb-2">🧪 Modalità Test:</p>
-                                <button 
-                                    id="btnTest"
-                                    class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-2 px-4 rounded transition text-sm"
-                                >
-                                    Accedi con: test@24odg.test
-                                </button>
-                            </div>
-                            
-                            <div class="mt-6 pt-6 border-t border-gray-700">
-                                <p class="text-gray-500 text-xs text-center">
-                                    🔒 Solo arbitri autorizzati possono accedere<br>
-                                    📱 I tuoi dati restano nel tuo dispositivo
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                document.getElementById('btnLogin').onclick = () => {
-                    const email = document.getElementById('loginEmail').value.trim();
-                    if (email) {
-                        this.login(email);
-                    } else {
-                        alert('Inserisci la tua email!');
-                    }
-                };
-                
-                document.getElementById('btnTest').onclick = () => {
-                    this.login(EMAIL_TEST);
-                };
-            },
-
-            renderNav() {
-                if (!this.utenteAutenticato) return;
-                
-                document.getElementById('nav').innerHTML = `
-                    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-                        <button data-vista="partite" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'partite' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">📋 Partite</button>
-                        <button data-vista="squadre" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'squadre' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">👥 Squadre</button>
-                        <button data-vista="classifica" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'classifica' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">🏆 Classifica</button>
-                        <button data-vista="statistiche" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'statistiche' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">📊 Statistiche</button>
-                        <button id="btnInstallaPWA" class="px-4 py-2 rounded font-semibold whitespace-nowrap bg-purple-900 text-purple-300 hover:bg-purple-800 ml-auto">📱 Installa App</button>
-                        <button id="btnLogout" class="px-4 py-2 rounded font-semibold whitespace-nowrap bg-red-900 text-red-300 hover:bg-red-800">🚪 Esci</button>
-                    </div>
-                `;
-                
-                document.querySelectorAll('[data-vista]').forEach(btn => {
-                    btn.onclick = () => {
-                        this.vistaCorrente = btn.dataset.vista;
-                        this.renderNav();
-                        this.renderContenuto();
-                    };
-                });
-                
-                document.getElementById('btnLogout').onclick = () => this.logout();
-                
-                // Pulsante installa PWA
-                const btnInstalla = document.getElementById('btnInstallaPWA');
-                if (btnInstalla) {
-                    btnInstalla.onclick = () => {
-                        if (window.deferredPrompt) {
-                            window.deferredPrompt.prompt();
-                            window.deferredPrompt.userChoice.then((choiceResult) => {
-                                if (choiceResult.outcome === 'accepted') {
-                                    console.log('✅ PWA installata');
-                                    btnInstalla.textContent = '✅ App Installata';
-                                    btnInstalla.disabled = true;
-                                }
-                                window.deferredPrompt = null;
-                            });
-                        } else {
-                            this.mostraIstruzioniInstallazione();
-                        }
-                    };
-                }
-            },
-
-            renderHeader() {
-                if (!this.utenteAutenticato) return;
-                
-                const completate = this.partite.filter(p => p.completata).length;
-                const statusHtml = isConfigured ? `
-                    <div class="flex items-center gap-1 px-3 py-1 rounded-full text-sm ${this.connesso ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}">
-                        ${this.connesso ? '📶' : '📵'} ${this.connesso ? 'Online' : 'Offline'}
-                    </div>
-                ` : '';
-                
-                document.getElementById('header').innerHTML = `
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-3">
-                            <h1 class="text-3xl font-bold text-cyan-400">24 Ore delle Grazie</h1>
-                            ${statusHtml}
-                        </div>
-                        <div class="text-sm text-gray-400">👤 ${this.email}</div>
-                    </div>
-                    ${!isConfigured ? '<div class="bg-yellow-900 border border-yellow-700 text-yellow-300 p-3 rounded-lg mb-4 text-sm">⚠️ <strong>Modalità Offline:</strong> Configura Supabase</div>' : ''}
-                    <p class="text-center text-gray-400">Partite: ${this.partite.length} | Completate: ${completate} | Squadre: ${Object.keys(this.squadre).length}</p>
-                `;
             },
 
             async caricaSquadre() {
@@ -364,7 +122,6 @@
             },
 
             sottoscriviAggiornamenti() {
-                // Sottoscrizione partite
                 supabase.channel('partite-changes').on('postgres_changes', 
                     { event: '*', schema: 'public', table: 'partite' },
                     (payload) => {
@@ -382,19 +139,15 @@
                     }
                 ).subscribe();
 
-                // Sottoscrizione squadre (NUOVO!)
                 supabase.channel('squadre-changes').on('postgres_changes',
                     { event: '*', schema: 'public', table: 'squadre' },
                     async (payload) => {
-                        // Ricarica tutte le squadre quando c'è una modifica
                         await this.caricaSquadre();
                         this.renderHeader();
                         
-                        // Aggiorna la vista se sei su Squadre
                         if (this.vistaCorrente === 'squadre') {
                             this.renderSquadre();
                         }
-                        // Aggiorna form partite se sei su Partite
                         else if (this.vistaCorrente === 'partite') {
                             this.renderFormPartita();
                         }
@@ -413,10 +166,10 @@
                     golB: row.gol_b || [],
                     scalpiA: row.scalpi_a || [],
                     scalpiB: row.scalpi_b || [],
-                    scalpiVuotiA: row.scalpi_vuoti_a || [],
-                    scalpiVuotiB: row.scalpi_vuoti_b || [],
-                    giocatoriEspulsiA: row.giocatori_espulsi_a || [],
-                    giocatoriEspulsiB: row.giocatori_espulsi_b || [],
+                    vuotiA: row.vuoti_a || [],
+                    vuotiB: row.vuoti_b || [],
+                    espulsiA: row.espulsi_a || [],
+                    espulsiB: row.espulsi_b || [],
                     punteggioA: row.punteggio_a || 0,
                     punteggioB: row.punteggio_b || 0,
                     puntiA: row.punti_a || 0,
@@ -437,10 +190,10 @@
                     gol_b: partita.golB,
                     scalpi_a: partita.scalpiA,
                     scalpi_b: partita.scalpiB,
-                    scalpi_vuoti_a: partita.scalpiVuotiA,
-                    scalpi_vuoti_b: partita.scalpiVuotiB,
-                    giocatori_espulsi_a: partita.giocatoriEspulsiA,
-                    giocatori_espulsi_b: partita.giocatoriEspulsiB,
+                    vuoti_a: partita.vuotiA,
+                    vuoti_b: partita.vuotiB,
+                    espulsi_a: partita.espulsiA,
+                    espulsi_b: partita.espulsiB,
                     punteggio_a: partita.punteggioA,
                     punteggio_b: partita.punteggioB,
                     punti_a: partita.puntiA,
@@ -455,8 +208,7 @@
                 const nuova = {
                     campo, orario, squadraA, squadraB,
                     golA: [], golB: [], scalpiA: [], scalpiB: [],
-                    scalpiVuotiA: [], scalpiVuotiB: [],
-                    giocatoriEspulsiA: [], giocatoriEspulsiB: [],
+                    vuotiA: [], vuotiB: [], espulsiA: [], espulsiB: [],
                     punteggioA: 0, punteggioB: 0, puntiA: 0, puntiB: 0,
                     mvpA: '', mvpB: '', completata: false
                 };
@@ -465,42 +217,6 @@
                 } else {
                     this.partite.push({ ...nuova, id: Date.now() });
                     this.renderContenuto();
-                }
-            },
-
-            aggiungiScalpoVuoto(id, squadra, giocatore) {
-                const partita = this.partite.find(p => p.id === id);
-                if (!partita) return;
-                
-                const nuoviScalpiVuoti = [...partita[`scalpiVuoti${squadra}`], giocatore];
-                const conteggioVuoti = nuoviScalpiVuoti.filter(g => g === giocatore).length;
-                
-                let aggiornamenti = { [`scalpiVuoti${squadra}`]: nuoviScalpiVuoti };
-                
-                // Se arriva al terzo scalpo vuoto, espelli il giocatore
-                if (conteggioVuoti === 3) {
-                    const nuoviEspulsi = [...partita[`giocatoriEspulsi${squadra}`], giocatore];
-                    aggiornamenti[`giocatoriEspulsi${squadra}`] = nuoviEspulsi;
-                    alert(`🔴 ${giocatore} espulso temporaneamente! Ha fatto 3 scalpi vuoti.`);
-                }
-                
-                this.aggiornaPartita(id, aggiornamenti);
-            },
-
-            rimuoviScalpoVuoto(id, squadra, index) {
-                const partita = this.partite.find(p => p.id === id);
-                const nuoviScalpiVuoti = [...partita[`scalpiVuoti${squadra}`]];
-                nuoviScalpiVuoti.splice(index, 1);
-                this.aggiornaPartita(id, { [`scalpiVuoti${squadra}`]: nuoviScalpiVuoti });
-            },
-
-            azzzeraScalpiVuoti(id, squadra) {
-                if (confirm(`Azzerare tutti gli scalpi vuoti della ${squadra}?`)) {
-                    this.aggiornaPartita(id, { 
-                        [`scalpiVuoti${squadra}`]: [],
-                        [`giocatoriEspulsi${squadra}`]: []
-                    });
-                    alert('✅ Scalpi vuoti e espulsioni azzerati!');
                 }
             },
 
@@ -526,6 +242,38 @@
                         this.partite = this.partite.filter(p => p.id !== id);
                         this.renderContenuto();
                     }
+                }
+            },
+
+            contaVuotiGiocatore(vuoti, giocatore) {
+                return vuoti.filter(v => v === giocatore).length;
+            },
+
+            aggiungiVuoto(partita, squadra, giocatore) {
+                const vuoti = [...partita[`vuoti${squadra}`], giocatore];
+                const conteggio = this.contaVuotiGiocatore(vuoti, giocatore);
+                
+                let aggiornamenti = { [`vuoti${squadra}`]: vuoti };
+                
+                if (conteggio === 3) {
+                    const espulsi = [...partita[`espulsi${squadra}`], giocatore];
+                    aggiornamenti[`espulsi${squadra}`] = espulsi;
+                    alert(`⚠️ ESPULSIONE TEMPORANEA!\n\n${giocatore} ha raggiunto 3 vuoti ed è stato espulso temporaneamente.`);
+                }
+                
+                this.aggiornaPartita(partita.id, aggiornamenti);
+            },
+
+            azzeraVuoti(partita, squadra) {
+                if (confirm(`Azzerare i vuoti del primo tempo per ${partita[`squadra${squadra}`]}?\n\nI giocatori espulsi NON rientreranno automaticamente.`)) {
+                    this.aggiornaPartita(partita.id, { [`vuoti${squadra}`]: [] });
+                }
+            },
+
+            rientraEspulso(partita, squadra, giocatore) {
+                if (confirm(`Far rientrare ${giocatore}?`)) {
+                    const espulsi = partita[`espulsi${squadra}`].filter(e => e !== giocatore);
+                    this.aggiornaPartita(partita.id, { [`espulsi${squadra}`]: espulsi });
                 }
             },
 
@@ -590,24 +338,20 @@
                                 
                                 for (const row of results.data) {
                                     try {
-                                        // Leggi i dati (supporta vari nomi colonna)
                                         const campo = parseInt(row.Campo || row.campo || row.CAMPO || '1');
                                         const orario = row.Orario || row.orario || row.ORARIO || row.Ora || row.ora || '';
                                         const squadraA = row.SquadraA || row.squadraA || row.SQUADRAA || row['Squadra A'] || row['squadra a'] || '';
                                         const squadraB = row.SquadraB || row.squadraB || row.SQUADRAB || row['Squadra B'] || row['squadra b'] || '';
                                         
-                                        // Verifica che i campi obbligatori ci siano
                                         if (!squadraA || !squadraB) {
                                             console.warn('Riga ignorata (mancano squadre):', row);
                                             errori++;
                                             continue;
                                         }
                                         
-                                        // Crea la partita
                                         await this.aggiungiPartita(campo, orario, squadraA.trim(), squadraB.trim());
                                         partiteImportate++;
                                         
-                                        // Piccola pausa per non sovraccaricare
                                         await new Promise(resolve => setTimeout(resolve, 100));
                                         
                                     } catch (error) {
@@ -673,7 +417,7 @@
             },
 
             calcolaStatistiche() {
-                const marcatori = {}, scalpiatori = {}, mvps = {};
+                const marcatori = {}, scalpiatori = {}, vuotatori = {}, mvps = {};
                 this.partite.forEach(p => {
                     ['A', 'B'].forEach(sq => {
                         const squadra = p[`squadra${sq}`];
@@ -685,6 +429,10 @@
                             const key = `${giocatore} (${squadra})`;
                             scalpiatori[key] = (scalpiatori[key] || 0) + 1;
                         });
+                        p[`vuoti${sq}`].forEach(giocatore => {
+                            const key = `${giocatore} (${squadra})`;
+                            vuotatori[key] = (vuotatori[key] || 0) + 1;
+                        });
                         if (p[`mvp${sq}`]) {
                             const key = `${p[`mvp${sq}`]} (${squadra})`;
                             mvps[key] = (mvps[key] || 0) + 1;
@@ -694,6 +442,7 @@
                 return {
                     marcatori: Object.entries(marcatori).map(([nome, gol]) => ({ nome, gol })).sort((a, b) => b.gol - a.gol),
                     scalpiatori: Object.entries(scalpiatori).map(([nome, scalpi]) => ({ nome, scalpi })).sort((a, b) => b.scalpi - a.scalpi),
+                    vuotatori: Object.entries(vuotatori).map(([nome, vuoti]) => ({ nome, vuoti })).sort((a, b) => b.vuoti - a.vuoti),
                     mvps: Object.entries(mvps).map(([nome, volte]) => ({ nome, volte })).sort((a, b) => b.volte - a.volte)
                 };
             },
@@ -720,7 +469,7 @@
                 const completate = this.partite.filter(p => p.completata).length;
                 const statusHtml = isConfigured ? `
                     <div class="flex items-center gap-1 px-3 py-1 rounded-full text-sm ${this.connesso ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}">
-                        ${this.connesso ? '📶' : '📵'} ${this.connesso ? 'Online' : 'Offline'}
+                        ${this.connesso ? '🟢' : '🔴'} ${this.connesso ? 'Online' : 'Offline'}
                     </div>
                 ` : '';
                 document.getElementById('header').innerHTML = `
@@ -897,6 +646,22 @@
                                                 <span class="text-white">${s.nome}</span>
                                             </div>
                                             <span class="bg-red-900 text-red-300 px-3 py-1 rounded-full font-bold">${s.scalpi}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `}
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">💨 Classifica Vuoti</h2>
+                            ${stats.vuotatori.length === 0 ? '<p class="text-gray-500">Nessun vuoto</p>' : `
+                                <div class="space-y-2">
+                                    ${stats.vuotatori.slice(0, 10).map((v, i) => `
+                                        <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3">
+                                            <div class="flex items-center gap-3">
+                                                <span class="font-bold ${i === 0 ? 'text-yellow-400 text-lg' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</span>
+                                                <span class="text-white">${v.nome}</span>
+                                            </div>
+                                            <span class="bg-blue-900 text-blue-300 px-3 py-1 rounded-full font-bold">${v.vuoti}</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -1140,49 +905,20 @@
                 `;
             },
 
-            renderSelectGiocatori(giocatori, id, tipo, squadra) {
-                if (giocatori.length > 0) {
-                    return `<select id="${tipo}-${squadra}-${id}" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                        <option value="">-- Seleziona --</option>
-                        ${giocatori.map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
-                    </select>`;
-                }
-                return `<input type="text" id="${tipo}-${squadra}-${id}" placeholder="Nome" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">`;
-            },
-
-            renderSezioneGolScalpi(p, squadra, tipo, emoji, titolo) {
-                const items = p[`${tipo}${squadra}`];
-                const giocatori = this.squadre[p[`squadra${squadra}`]] || [];
-                
-                return `
-                    <div class="mb-4">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span>${emoji}</span>
-                            <span class="font-semibold text-gray-200">${titolo} (${items.length})</span>
-                        </div>
-                        ${!p.completata ? `
-                            <div class="flex gap-2 mb-2">
-                                ${this.renderSelectGiocatori(giocatori, p.id, tipo, squadra)}
-                                <button data-add-${tipo}="${p.id}-${squadra}" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded">➕</button>
-                            </div>
-                        ` : ''}
-                        <div class="space-y-1">
-                            ${items.map((item, i) => `
-                                <div class="flex justify-between items-center bg-gray-600 rounded px-3 py-2 text-sm">
-                                    <span>${item}</span>
-                                    ${!p.completata ? `<button data-del-${tipo}="${p.id}-${squadra}-${i}" class="text-red-400">🗑️</button>` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            },
-
             renderSquadraPartita(p, squadra) {
                 const nome = p[`squadra${squadra}`];
+                const gol = p[`gol${squadra}`];
+                const scalpi = p[`scalpi${squadra}`];
+                const vuoti = p[`vuoti${squadra}`];
+                const espulsi = p[`espulsi${squadra}`];
+                const giocatori = this.squadre[nome] || [];
                 const punteggio = p[`punteggio${squadra}`];
-                const sezioneGol = this.renderSezioneGolScalpi(p, squadra, 'gol', '🏆', 'Gol');
-                const sezioneScalpi = this.renderSezioneGolScalpi(p, squadra, 'scalpi', '🎯', 'Scalpi');
+                
+                // Conta vuoti per giocatore
+                const vuotiPerGiocatore = {};
+                vuoti.forEach(v => {
+                    vuotiPerGiocatore[v] = (vuotiPerGiocatore[v] || 0) + 1;
+                });
                 
                 return `
                     <div class="bg-gray-700 rounded-lg p-4">
@@ -1190,8 +926,122 @@
                             <h3 class="text-lg font-bold text-cyan-300">${nome}</h3>
                             <div class="text-2xl font-bold text-yellow-400">${punteggio}</div>
                         </div>
-                        ${sezioneGol}
-                        ${sezioneScalpi}
+                        
+                        ${espulsi.length > 0 ? `
+                            <div class="mb-4 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg p-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-red-400">🚫</span>
+                                    <span class="font-semibold text-red-300">Espulsi (${espulsi.length})</span>
+                                </div>
+                                <div class="space-y-1">
+                                    ${espulsi.map((e, i) => `
+                                        <div class="flex justify-between items-center bg-red-900 bg-opacity-40 rounded px-3 py-2 text-sm">
+                                            <span class="text-red-200">${e}</span>
+                                            ${!p.completata ? `<button data-rientra-espulso="${p.id}-${squadra}-${i}" class="text-green-400 hover:text-green-300 text-xs">↩️ Rientra</button>` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="mb-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-yellow-400">🏆</span>
+                                <span class="font-semibold text-gray-200">Gol (${gol.length})</span>
+                            </div>
+                            ${!p.completata ? `
+                                <div class="flex gap-2 mb-2">
+                                    ${giocatori.length > 0 ? `
+                                        <select id="gol-${squadra}-${p.id}" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
+                                            <option value="">-- Seleziona --</option>
+                                            ${giocatori.map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
+                                        </select>
+                                    ` : `
+                                        <input type="text" id="gol-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
+                                    `}
+                                    <button data-add-gol="${p.id}-${squadra}" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded">➕</button>
+                                </div>
+                            ` : ''}
+                            <div class="space-y-1">
+                                ${gol.map((g, i) => `
+                                    <div class="flex justify-between items-center bg-gray-600 rounded px-3 py-2 text-sm">
+                                        <span>${g}</span>
+                                        ${!p.completata ? `<button data-del-gol="${p.id}-${squadra}-${i}" class="text-red-400">🗑️</button>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-red-400">🎯</span>
+                                <span class="font-semibold text-gray-200">Scalpi (${scalpi.length})</span>
+                            </div>
+                            ${!p.completata ? `
+                                <div class="flex gap-2 mb-2">
+                                    ${giocatori.length > 0 ? `
+                                        <select id="scalpo-${squadra}-${p.id}" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
+                                            <option value="">-- Seleziona --</option>
+                                            ${giocatori.map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
+                                        </select>
+                                    ` : `
+                                        <input type="text" id="scalpo-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
+                                    `}
+                                    <button data-add-scalpo="${p.id}-${squadra}" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded">➕</button>
+                                </div>
+                            ` : ''}
+                            <div class="space-y-1">
+                                ${scalpi.map((s, i) => `
+                                    <div class="flex justify-between items-center bg-gray-600 rounded px-3 py-2 text-sm">
+                                        <span>${s}</span>
+                                        ${!p.completata ? `<button data-del-scalpo="${p.id}-${squadra}-${i}" class="text-red-400">🗑️</button>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-blue-400">💨</span>
+                                    <span class="font-semibold text-gray-200">Vuoti (${vuoti.length})</span>
+                                </div>
+                                ${!p.completata && vuoti.length > 0 ? `
+                                    <button data-azzera-vuoti="${p.id}-${squadra}" class="text-xs bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded">
+                                        🔄 Azzera 1° Tempo
+                                    </button>
+                                ` : ''}
+                            </div>
+                            ${!p.completata ? `
+                                <div class="flex gap-2 mb-2">
+                                    ${giocatori.length > 0 ? `
+                                        <select id="vuoto-${squadra}-${p.id}" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
+                                            <option value="">-- Seleziona --</option>
+                                            ${giocatori.map(g => {
+                                                const giocatoreNome = `${g.numero} - ${g.nome}`;
+                                                const conteggioVuoti = vuotiPerGiocatore[giocatoreNome] || 0;
+                                                const isEspulso = espulsi.includes(giocatoreNome);
+                                                return `<option value="${giocatoreNome}" ${isEspulso ? 'disabled' : ''}>${giocatoreNome}${conteggioVuoti > 0 ? ` (${conteggioVuoti} vuoti)` : ''}${isEspulso ? ' [ESPULSO]' : ''}</option>`;
+                                            }).join('')}
+                                        </select>
+                                    ` : `
+                                        <input type="text" id="vuoto-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
+                                    `}
+                                    <button data-add-vuoto="${p.id}-${squadra}" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded">➕</button>
+                                </div>
+                            ` : ''}
+                            <div class="space-y-1">
+                                ${vuoti.map((v, i) => {
+                                    const conteggioGiocatore = vuotiPerGiocatore[v];
+                                    return `
+                                        <div class="flex justify-between items-center bg-gray-600 rounded px-3 py-2 text-sm ${conteggioGiocatore >= 3 ? 'border-2 border-red-500' : ''}">
+                                            <span>${v} ${conteggioGiocatore >= 2 ? `<span class="text-orange-400">(${conteggioGiocatore}/3)</span>` : ''}</span>
+                                            ${!p.completata ? `<button data-del-vuoto="${p.id}-${squadra}-${i}" class="text-red-400">🗑️</button>` : ''}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
                     </div>
                 `;
             },
@@ -1213,74 +1063,92 @@
                     this.aggiornaPartita(p.id, { punteggioA: scoreA, punteggioB: scoreB, puntiA, puntiB, mvpA, mvpB, completata: true });
                 };
                 
-                this.attachGolScalpiHandlers(p, 'A');
-                this.attachGolScalpiHandlers(p, 'B');
-            },
-
-            attachGolScalpiHandlers(p, squadra) {
-                // Gol
-                const btnGol = document.querySelector(`[data-add-gol="${p.id}-${squadra}"]`);
-                if (btnGol) btnGol.onclick = () => {
-                    const input = document.getElementById(`gol-${squadra}-${p.id}`);
-                    const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
-                    if (valore) {
-                        const nuoviGol = [...p[`gol${squadra}`], valore];
-                        this.aggiornaPartita(p.id, { [`gol${squadra}`]: nuoviGol, [`punteggio${squadra}`]: nuoviGol.length });
-                        input.value = '';
-                    }
-                };
-                
-                // Scalpi
-                const btnScalpo = document.querySelector(`[data-add-scalpo="${p.id}-${squadra}"]`);
-                if (btnScalpo) btnScalpo.onclick = () => {
-                    const input = document.getElementById(`scalpo-${squadra}-${p.id}`);
-                    const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
-                    if (valore) {
-                        const nuoviScalpi = [...p[`scalpi${squadra}`], valore];
-                        this.aggiornaPartita(p.id, { [`scalpi${squadra}`]: nuoviScalpi });
-                        input.value = '';
-                    }
-                };
-                
-                // Scalpi Vuoti
-                const btnVuoto = document.querySelector(`[data-add-vuoto="${p.id}-${squadra}"]`);
-                if (btnVuoto) btnVuoto.onclick = () => {
-                    const input = document.getElementById(`scalpo-vuoto-${squadra}-${p.id}`);
-                    const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
-                    if (valore) {
-                        this.aggiungiScalpoVuoto(p.id, squadra, valore);
-                        input.value = '';
-                    }
-                };
-                
-                // Azzera Scalpi Vuoti
-                const btnAzzera = document.querySelector(`[data-azzera-vuoti="${p.id}-${squadra}"]`);
-                if (btnAzzera) btnAzzera.onclick = () => this.azzzeraScalpiVuoti(p.id, squadra);
-                
-                // Elimina gol
-                p[`gol${squadra}`].forEach((_, i) => {
-                    const btn = document.querySelector(`[data-del-gol="${p.id}-${squadra}-${i}"]`);
-                    if (btn) btn.onclick = () => {
-                        const nuoviGol = [...p[`gol${squadra}`]];
-                        nuoviGol.splice(i, 1);
-                        this.aggiornaPartita(p.id, { [`gol${squadra}`]: nuoviGol, [`punteggio${squadra}`]: nuoviGol.length });
+                ['A', 'B'].forEach(sq => {
+                    // Gestione Gol
+                    const btnGol = document.querySelector(`[data-add-gol="${p.id}-${sq}"]`);
+                    if (btnGol) btnGol.onclick = () => {
+                        const input = document.getElementById(`gol-${sq}-${p.id}`);
+                        const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
+                        if (valore) {
+                            const nuoviGol = [...p[`gol${sq}`], valore];
+                            const nuovoPunteggio = nuoviGol.length;
+                            this.aggiornaPartita(p.id, { [`gol${sq}`]: nuoviGol, [`punteggio${sq}`]: nuovoPunteggio });
+                            input.value = '';
+                        }
                     };
-                });
-                
-                // Elimina scalpi
-                p[`scalpi${squadra}`].forEach((_, i) => {
-                    const btn = document.querySelector(`[data-del-scalpo="${p.id}-${squadra}-${i}"]`);
-                    if (btn) btn.onclick = () => {
-                        const nuoviScalpi = [...p[`scalpi${squadra}`]];
-                        nuoviScalpi.splice(i, 1);
-                        this.aggiornaPartita(p.id, { [`scalpi${squadra}`]: nuoviScalpi });
+                    
+                    // Gestione Scalpi
+                    const btnScalpo = document.querySelector(`[data-add-scalpo="${p.id}-${sq}"]`);
+                    if (btnScalpo) btnScalpo.onclick = () => {
+                        const input = document.getElementById(`scalpo-${sq}-${p.id}`);
+                        const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
+                        if (valore) {
+                            const nuoviScalpi = [...p[`scalpi${sq}`], valore];
+                            this.aggiornaPartita(p.id, { [`scalpi${sq}`]: nuoviScalpi });
+                            input.value = '';
+                        }
                     };
-                });
-                
-                // Elimina scalpi vuoti
-                (p[`scalpiVuoti${squadra}`] || []).forEach((_, i) => {
-                    const btn = document.querySelector(`[data-del-vuoto="${p.id}-${squadra}-${i}"]`);
-                    if (btn) btn.onclick = () => this.rimuoviScalpoVuoto(p.id, squadra, i);
+                    
+                    // Gestione Vuoti
+                    const btnVuoto = document.querySelector(`[data-add-vuoto="${p.id}-${sq}"]`);
+                    if (btnVuoto) btnVuoto.onclick = () => {
+                        const input = document.getElementById(`vuoto-${sq}-${p.id}`);
+                        const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
+                        if (valore) {
+                            // Controlla se il giocatore è già espulso
+                            if (p[`espulsi${sq}`].includes(valore)) {
+                                alert('⚠️ Questo giocatore è già espulso!');
+                                return;
+                            }
+                            this.aggiungiVuoto(p, sq, valore);
+                            input.value = '';
+                        }
+                    };
+                    
+                    // Azzera vuoti
+                    const btnAzzera = document.querySelector(`[data-azzera-vuoti="${p.id}-${sq}"]`);
+                    if (btnAzzera) btnAzzera.onclick = () => {
+                        this.azzeraVuoti(p, sq);
+                    };
+                    
+                    // Rientro espulsi
+                    p[`espulsi${sq}`].forEach((_, i) => {
+                        const btn = document.querySelector(`[data-rientra-espulso="${p.id}-${sq}-${i}"]`);
+                        if (btn) btn.onclick = () => {
+                            this.rientraEspulso(p, sq, p[`espulsi${sq}`][i]);
+                        };
+                    });
+                    
+                    // Eliminazione Gol
+                    p[`gol${sq}`].forEach((_, i) => {
+                        const btn = document.querySelector(`[data-del-gol="${p.id}-${sq}-${i}"]`);
+                        if (btn) btn.onclick = () => {
+                            const nuoviGol = [...p[`gol${sq}`]];
+                            nuoviGol.splice(i, 1);
+                            const nuovoPunteggio = nuoviGol.length;
+                            this.aggiornaPartita(p.id, { [`gol${sq}`]: nuoviGol, [`punteggio${sq}`]: nuovoPunteggio });
+                        };
+                    });
+                    
+                    // Eliminazione Scalpi
+                    p[`scalpi${sq}`].forEach((_, i) => {
+                        const btn = document.querySelector(`[data-del-scalpo="${p.id}-${sq}-${i}"]`);
+                        if (btn) btn.onclick = () => {
+                            const nuoviScalpi = [...p[`scalpi${sq}`]];
+                            nuoviScalpi.splice(i, 1);
+                            this.aggiornaPartita(p.id, { [`scalpi${sq}`]: nuoviScalpi });
+                        };
+                    });
+                    
+                    // Eliminazione Vuoti
+                    p[`vuoti${sq}`].forEach((_, i) => {
+                        const btn = document.querySelector(`[data-del-vuoto="${p.id}-${sq}-${i}"]`);
+                        if (btn) btn.onclick = () => {
+                            const nuoviVuoti = [...p[`vuoti${sq}`]];
+                            nuoviVuoti.splice(i, 1);
+                            this.aggiornaPartita(p.id, { [`vuoti${sq}`]: nuoviVuoti });
+                        };
+                    });
                 });
             }
         };
