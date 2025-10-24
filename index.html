@@ -3,1173 +3,611 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0e7490">
-    <meta name="description" content="App per la gestione del torneo 24 Ore di Gabicce">
-    <title>24OdG - Torneo Arbitri</title>
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./icon-192.png">
+    <title>24OdG - Torneo Pallascout</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm';
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#111827">
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    
+    <!-- Login Screen -->
+    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full">
+            <h1 class="text-3xl font-bold text-cyan-400 mb-6 text-center">⚽ 24 Ore delle Grazie</h1>
+            <p class="text-gray-300 mb-6 text-center">Accedi con email autorizzata</p>
+            <input type="email" id="emailInput" placeholder="email@arbitro.it" 
+                   class="w-full bg-gray-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-400">
+            <button onclick="login()" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-lg transition">
+                Accedi
+            </button>
+            <p id="loginError" class="text-red-400 text-sm mt-4 text-center hidden"></p>
+        </div>
+    </div>
 
-        const SUPABASE_URL = 'https://bflagmexshprrbigcjzj.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTk3MDMsImV4cCI6MjA3NTc5NTcwM30.29WDB3dfj9a2jOjTJRT28nQcjMqEXoDdfWXTWMNJbE8';
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
+        <!-- Header -->
+        <header class="bg-gray-800 shadow-lg sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-cyan-400">⚽ 24OdG</h1>
+                <div class="flex items-center gap-4">
+                    <span id="userEmailDisplay" class="text-gray-300 text-sm"></span>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm transition">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </header>
 
-        let supabase = null;
-        let isConfigured = false;
+        <!-- Navigation -->
+        <nav class="bg-gray-800 border-t border-gray-700">
+            <div class="container mx-auto px-4 flex overflow-x-auto">
+                <button onclick="showSection('squadre')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
+                    👥 Squadre
+                </button>
+                <button onclick="showSection('partite')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
+                    📋 Partite
+                </button>
+                <button onclick="showSection('referto')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
+                    ⚽ Referto
+                </button>
+                <button onclick="showSection('classifiche')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
+                    🏆 Classifiche
+                </button>
+            </div>
+        </nav>
 
-        if (SUPABASE_URL !== 'https://TUO-PROGETTO.supabase.co') {
-            supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-            isConfigured = true;
-        }
-
-        const app = {
-            partite: [],
-            squadre: {},
-            filtroCampo: 'tutti',
-            connesso: false,
-            vistaCorrente: 'partite',
-            sottovistaPartite: 'tutte',
-
-            async init() {
-                console.log('🚀 Inizializzazione app...');
-                this.renderNav();
-                this.renderHeader();
-                
-                if (isConfigured) {
-                    console.log('✅ Supabase configurato, carico dati...');
-                    await this.caricaSquadre();
-                    await this.caricaPartite();
-                    this.sottoscriviAggiornamenti();
-                    this.renderHeader();
-                    console.log('✅ Dati caricati, app pronta!');
-                } else {
-                    console.log('⚠️ Modalità offline - configura Supabase');
-                }
-                
-                this.renderContenuto();
-            },
-
-            async caricaSquadre() {
-                if (!isConfigured) {
-                    console.log('⚠️ Supabase non configurato - skip caricamento squadre');
-                    return;
-                }
-                try {
-                    console.log('📥 Caricamento squadre da Supabase...');
-                    const { data, error } = await supabase.from('squadre').select('*');
-                    
-                    if (error) {
-                        console.error('❌ Errore caricamento squadre:', error);
-                        return;
-                    }
-                    
-                    console.log(`✅ Ricevute ${data.length} righe dalla tabella squadre`);
-                    
-                    this.squadre = {};
-                    data.forEach(row => {
-                        if (!this.squadre[row.nome_squadra]) {
-                            this.squadre[row.nome_squadra] = [];
-                        }
-                        this.squadre[row.nome_squadra].push({
-                            numero: row.numero,
-                            nome: row.nome_giocatore
-                        });
-                    });
-                    
-                    console.log(`✅ Squadre caricate: ${Object.keys(this.squadre).length}`);
-                    console.log('Squadre:', Object.keys(this.squadre));
-                    
-                } catch (error) {
-                    console.error('❌ Eccezione caricamento squadre:', error);
-                }
-            },
-
-            async salvaSquadre() {
-                if (!isConfigured) return;
-                try {
-                    await supabase.from('squadre').delete().neq('id', 0);
-                    const rows = [];
-                    Object.keys(this.squadre).forEach(nomeSquadra => {
-                        this.squadre[nomeSquadra].forEach(giocatore => {
-                            rows.push({
-                                nome_squadra: nomeSquadra,
-                                numero: giocatore.numero,
-                                nome_giocatore: giocatore.nome
-                            });
-                        });
-                    });
-                    if (rows.length > 0) {
-                        await supabase.from('squadre').insert(rows);
-                    }
-                } catch (error) {
-                    console.error('Errore salvataggio squadre:', error);
-                }
-            },
-
-            async caricaPartite() {
-                try {
-                    const { data, error } = await supabase.from('partite').select('*').order('orario', { ascending: true }).order('campo', { ascending: true });
-                    if (error) throw error;
-                    this.partite = data.map(this.convertiDaDB);
-                    this.connesso = true;
-                    this.renderHeader();
-                } catch (error) {
-                    console.error('Errore caricamento:', error);
-                    this.connesso = false;
-                }
-            },
-
-            sottoscriviAggiornamenti() {
-                supabase.channel('partite-changes').on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'partite' },
-                    (payload) => {
-                        if (payload.eventType === 'INSERT') {
-                            this.partite.push(this.convertiDaDB(payload.new));
-                        } else if (payload.eventType === 'UPDATE') {
-                            const idx = this.partite.findIndex(p => p.id === payload.new.id);
-                            if (idx !== -1) this.partite[idx] = this.convertiDaDB(payload.new);
-                        } else if (payload.eventType === 'DELETE') {
-                            this.partite = this.partite.filter(p => p.id !== payload.old.id);
-                        }
-                        this.connesso = true;
-                        this.renderHeader();
-                        this.renderContenuto();
-                    }
-                ).subscribe();
-
-                supabase.channel('squadre-changes').on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'squadre' },
-                    async (payload) => {
-                        await this.caricaSquadre();
-                        this.renderHeader();
-                        
-                        if (this.vistaCorrente === 'squadre') {
-                            this.renderSquadre();
-                        }
-                        else if (this.vistaCorrente === 'partite') {
-                            this.renderFormPartita();
-                        }
-                    }
-                ).subscribe();
-            },
-
-            convertiDaDB(row) {
-                return {
-                    id: row.id,
-                    campo: row.campo || 1,
-                    orario: row.orario || '',
-                    squadraA: row.squadra_a,
-                    squadraB: row.squadra_b,
-                    golA: row.gol_a || [],
-                    golB: row.gol_b || [],
-                    scalpiA: row.scalpi_a || [],
-                    scalpiB: row.scalpi_b || [],
-                    vuotiA: row.vuoti_a || [],
-                    vuotiB: row.vuoti_b || [],
-                    espulsiA: row.espulsi_a || [],
-                    espulsiB: row.espulsi_b || [],
-                    punteggioA: row.punteggio_a || 0,
-                    punteggioB: row.punteggio_b || 0,
-                    puntiA: row.punti_a || 0,
-                    puntiB: row.punti_b || 0,
-                    mvpA: row.mvp_a || '',
-                    mvpB: row.mvp_b || '',
-                    completata: row.completata || false
-                };
-            },
-
-            convertiPerDB(partita) {
-                return {
-                    campo: partita.campo,
-                    orario: partita.orario,
-                    squadra_a: partita.squadraA,
-                    squadra_b: partita.squadraB,
-                    gol_a: partita.golA,
-                    gol_b: partita.golB,
-                    scalpi_a: partita.scalpiA,
-                    scalpi_b: partita.scalpiB,
-                    vuoti_a: partita.vuotiA,
-                    vuoti_b: partita.vuotiB,
-                    espulsi_a: partita.espulsiA,
-                    espulsi_b: partita.espulsiB,
-                    punteggio_a: partita.punteggioA,
-                    punteggio_b: partita.punteggioB,
-                    punti_a: partita.puntiA,
-                    punti_b: partita.puntiB,
-                    mvp_a: partita.mvpA,
-                    mvp_b: partita.mvpB,
-                    completata: partita.completata
-                };
-            },
-
-            async aggiungiPartita(campo, orario, squadraA, squadraB) {
-                const nuova = {
-                    campo, orario, squadraA, squadraB,
-                    golA: [], golB: [], scalpiA: [], scalpiB: [],
-                    vuotiA: [], vuotiB: [], espulsiA: [], espulsiB: [],
-                    punteggioA: 0, punteggioB: 0, puntiA: 0, puntiB: 0,
-                    mvpA: '', mvpB: '', completata: false
-                };
-                if (isConfigured) {
-                    await supabase.from('partite').insert([this.convertiPerDB(nuova)]);
-                } else {
-                    this.partite.push({ ...nuova, id: Date.now() });
-                    this.renderContenuto();
-                }
-            },
-
-            async aggiornaPartita(id, aggiornamenti) {
-                if (isConfigured) {
-                    const partita = this.partite.find(p => p.id === id);
-                    const aggiornato = { ...partita, ...aggiornamenti };
-                    await supabase.from('partite').update(this.convertiPerDB(aggiornato)).eq('id', id);
-                } else {
-                    const idx = this.partite.findIndex(p => p.id === id);
-                    if (idx !== -1) {
-                        this.partite[idx] = { ...this.partite[idx], ...aggiornamenti };
-                        this.renderContenuto();
-                    }
-                }
-            },
-
-            async eliminaPartita(id) {
-                if (confirm('Sei sicuro di voler eliminare questa partita?')) {
-                    if (isConfigured) {
-                        await supabase.from('partite').delete().eq('id', id);
-                    } else {
-                        this.partite = this.partite.filter(p => p.id !== id);
-                        this.renderContenuto();
-                    }
-                }
-            },
-
-            contaVuotiGiocatore(vuoti, giocatore) {
-                return vuoti.filter(v => v === giocatore).length;
-            },
-
-            aggiungiVuoto(partita, squadra, giocatore) {
-                const vuoti = [...partita[`vuoti${squadra}`], giocatore];
-                const conteggio = this.contaVuotiGiocatore(vuoti, giocatore);
-                
-                let aggiornamenti = { [`vuoti${squadra}`]: vuoti };
-                
-                if (conteggio === 3) {
-                    const espulsi = [...partita[`espulsi${squadra}`], giocatore];
-                    aggiornamenti[`espulsi${squadra}`] = espulsi;
-                    alert(`⚠️ ESPULSIONE TEMPORANEA!\n\n${giocatore} ha raggiunto 3 vuoti ed è stato espulso temporaneamente.`);
-                }
-                
-                this.aggiornaPartita(partita.id, aggiornamenti);
-            },
-
-            azzeraVuoti(partita, squadra) {
-                if (confirm(`Azzerare i vuoti del primo tempo per ${partita[`squadra${squadra}`]}?\n\nI giocatori espulsi NON rientreranno automaticamente.`)) {
-                    this.aggiornaPartita(partita.id, { [`vuoti${squadra}`]: [] });
-                }
-            },
-
-            rientraEspulso(partita, squadra, giocatore) {
-                if (confirm(`Far rientrare ${giocatore}?`)) {
-                    const espulsi = partita[`espulsi${squadra}`].filter(e => e !== giocatore);
-                    this.aggiornaPartita(partita.id, { [`espulsi${squadra}`]: espulsi });
-                }
-            },
-
-            importaDaGoogleSheets() {
-                const url = prompt('Incolla il link pubblico del Google Sheets:\n\nIl foglio deve avere 3 colonne: Squadra, Numero, Nome');
-                if (!url) return;
-                let csvUrl = url;
-                if (url.includes('/edit')) {
-                    const sheetId = url.match(/\/d\/([a-zA-Z0-9-_]+)/)[1];
-                    csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-                }
-                fetch(csvUrl)
-                    .then(response => response.text())
-                    .then(csv => {
-                        Papa.parse(csv, {
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: (results) => {
-                                this.squadre = {};
-                                results.data.forEach(row => {
-                                    const squadra = row.Squadra || row.squadra;
-                                    const numero = parseInt(row.Numero || row.numero);
-                                    const nome = row.Nome || row.nome;
-                                    if (squadra && numero && nome) {
-                                        if (!this.squadre[squadra]) this.squadre[squadra] = [];
-                                        this.squadre[squadra].push({ numero, nome });
-                                    }
-                                });
-                                this.salvaSquadre();
-                                alert(`✅ Importate ${Object.keys(this.squadre).length} squadre!`);
-                                this.renderHeader();
-                                if (this.vistaCorrente === 'squadre') this.renderSquadre();
-                                else if (this.vistaCorrente === 'partite') this.renderContenuto();
-                            }
-                        });
-                    })
-                    .catch(error => {
-                        alert('❌ Errore import. Assicurati che il link sia pubblico.');
-                        console.error(error);
-                    });
-            },
-
-            importaPartiteDaGoogleSheets() {
-                const url = prompt('Incolla il link pubblico del Google Sheets con le partite:\n\nColonne richieste: Campo, Orario, SquadraA, SquadraB\n(Opzionali: Slot, Data)');
-                if (!url) return;
-                
-                let csvUrl = url;
-                if (url.includes('/edit')) {
-                    const sheetId = url.match(/\/d\/([a-zA-Z0-9-_]+)/)[1];
-                    csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-                }
-                
-                fetch(csvUrl)
-                    .then(response => response.text())
-                    .then(csv => {
-                        Papa.parse(csv, {
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: async (results) => {
-                                let partiteImportate = 0;
-                                let errori = 0;
-                                
-                                for (const row of results.data) {
-                                    try {
-                                        const campo = parseInt(row.Campo || row.campo || row.CAMPO || '1');
-                                        const orario = row.Orario || row.orario || row.ORARIO || row.Ora || row.ora || '';
-                                        const squadraA = row.SquadraA || row.squadraA || row.SQUADRAA || row['Squadra A'] || row['squadra a'] || '';
-                                        const squadraB = row.SquadraB || row.squadraB || row.SQUADRAB || row['Squadra B'] || row['squadra b'] || '';
-                                        
-                                        if (!squadraA || !squadraB) {
-                                            console.warn('Riga ignorata (mancano squadre):', row);
-                                            errori++;
-                                            continue;
-                                        }
-                                        
-                                        await this.aggiungiPartita(campo, orario, squadraA.trim(), squadraB.trim());
-                                        partiteImportate++;
-                                        
-                                        await new Promise(resolve => setTimeout(resolve, 100));
-                                        
-                                    } catch (error) {
-                                        console.error('Errore importazione riga:', row, error);
-                                        errori++;
-                                    }
-                                }
-                                
-                                let messaggio = `✅ Importate ${partiteImportate} partite!`;
-                                if (errori > 0) {
-                                    messaggio += `\n⚠️ ${errori} righe ignorate (controlla la console per dettagli)`;
-                                }
-                                alert(messaggio);
-                                
-                                this.renderHeader();
-                                if (this.vistaCorrente === 'partite') this.renderPartite();
-                            }
-                        });
-                    })
-                    .catch(error => {
-                        alert('❌ Errore import partite. Assicurati che:\n1. Il link sia pubblico\n2. Le colonne siano: Campo, Orario, SquadraA, SquadraB');
-                        console.error(error);
-                    });
-            },
-
-            calcolaClassifica() {
-                const classifica = {};
-                this.partite.forEach(p => {
-                    if (!p.completata) return;
-                    [p.squadraA, p.squadraB].forEach((squadra, idx) => {
-                        if (!classifica[squadra]) {
-                            classifica[squadra] = {
-                                nome: squadra, punti: 0, giocate: 0, vinte: 0,
-                                pareggiate: 0, perse: 0, golFatti: 0, golSubiti: 0
-                            };
-                        }
-                        const stat = classifica[squadra];
-                        stat.giocate++;
-                        if (idx === 0) {
-                            stat.punti += p.puntiA;
-                            stat.golFatti += p.punteggioA;
-                            stat.golSubiti += p.punteggioB;
-                            if (p.punteggioA > p.punteggioB) stat.vinte++;
-                            else if (p.punteggioA === p.punteggioB) stat.pareggiate++;
-                            else stat.perse++;
-                        } else {
-                            stat.punti += p.puntiB;
-                            stat.golFatti += p.punteggioB;
-                            stat.golSubiti += p.punteggioA;
-                            if (p.punteggioB > p.punteggioA) stat.vinte++;
-                            else if (p.punteggioA === p.punteggioB) stat.pareggiate++;
-                            else stat.perse++;
-                        }
-                    });
-                });
-                return Object.values(classifica).sort((a, b) => {
-                    if (b.punti !== a.punti) return b.punti - a.punti;
-                    const diffA = a.golFatti - a.golSubiti;
-                    const diffB = b.golFatti - b.golSubiti;
-                    if (diffB !== diffA) return diffB - diffA;
-                    return b.golFatti - a.golFatti;
-                });
-            },
-
-            calcolaStatistiche() {
-                const marcatori = {}, scalpiatori = {}, vuotatori = {}, mvps = {};
-                this.partite.forEach(p => {
-                    ['A', 'B'].forEach(sq => {
-                        const squadra = p[`squadra${sq}`];
-                        p[`gol${sq}`].forEach(giocatore => {
-                            const key = `${giocatore} (${squadra})`;
-                            marcatori[key] = (marcatori[key] || 0) + 1;
-                        });
-                        p[`scalpi${sq}`].forEach(giocatore => {
-                            const key = `${giocatore} (${squadra})`;
-                            scalpiatori[key] = (scalpiatori[key] || 0) + 1;
-                        });
-                        p[`vuoti${sq}`].forEach(giocatore => {
-                            const key = `${giocatore} (${squadra})`;
-                            vuotatori[key] = (vuotatori[key] || 0) + 1;
-                        });
-                        if (p[`mvp${sq}`]) {
-                            const key = `${p[`mvp${sq}`]} (${squadra})`;
-                            mvps[key] = (mvps[key] || 0) + 1;
-                        }
-                    });
-                });
-                return {
-                    marcatori: Object.entries(marcatori).map(([nome, gol]) => ({ nome, gol })).sort((a, b) => b.gol - a.gol),
-                    scalpiatori: Object.entries(scalpiatori).map(([nome, scalpi]) => ({ nome, scalpi })).sort((a, b) => b.scalpi - a.scalpi),
-                    vuotatori: Object.entries(vuotatori).map(([nome, vuoti]) => ({ nome, vuoti })).sort((a, b) => b.vuoti - a.vuoti),
-                    mvps: Object.entries(mvps).map(([nome, volte]) => ({ nome, volte })).sort((a, b) => b.volte - a.volte)
-                };
-            },
-
-            renderNav() {
-                document.getElementById('nav').innerHTML = `
-                    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-                        <button data-vista="partite" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'partite' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">📋 Partite</button>
-                        <button data-vista="squadre" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'squadre' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">👥 Squadre</button>
-                        <button data-vista="classifica" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'classifica' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">🏆 Classifica</button>
-                        <button data-vista="statistiche" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vistaCorrente === 'statistiche' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">📊 Statistiche</button>
+        <!-- Sections Container -->
+        <div class="container mx-auto px-4 py-6">
+            
+            <!-- SQUADRE SECTION -->
+            <div id="squadreSection" class="section">
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <h2 class="text-2xl font-bold text-cyan-400 mb-4">👥 Gestione Squadre</h2>
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <input type="text" id="sheetUrlSquadre" placeholder="URL Google Sheets" 
+                               class="flex-1 min-w-[200px] bg-gray-700 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                        <button onclick="importSquadre()" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition">
+                            📥 Import Squadre
+                        </button>
+                        <button onclick="aggiungiSquadraManuale()" class="bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-lg transition">
+                            ➕ Aggiungi Manuale
+                        </button>
                     </div>
-                `;
-                document.querySelectorAll('[data-vista]').forEach(btn => {
-                    btn.onclick = () => {
-                        this.vistaCorrente = btn.dataset.vista;
-                        this.renderNav();
-                        this.renderContenuto();
-                    };
-                });
-            },
+                </div>
+                
+                <div id="squadreList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
 
-            renderHeader() {
-                const completate = this.partite.filter(p => p.completata).length;
-                const statusHtml = isConfigured ? `
-                    <div class="flex items-center gap-1 px-3 py-1 rounded-full text-sm ${this.connesso ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}">
-                        ${this.connesso ? '🟢' : '🔴'} ${this.connesso ? 'Online' : 'Offline'}
+            <!-- PARTITE SECTION -->
+            <div id="partiteSection" class="section hidden">
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <h2 class="text-2xl font-bold text-cyan-400 mb-4">📋 Gestione Partite</h2>
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <input type="text" id="sheetUrlPartite" placeholder="URL Google Sheets" 
+                               class="flex-1 min-w-[200px] bg-gray-700 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                        <button onclick="importPartite()" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition">
+                            📥 Import Partite
+                        </button>
+                        <button onclick="aggiungiPartitaManuale()" class="bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-lg transition">
+                            ➕ Aggiungi Manuale
+                        </button>
                     </div>
-                ` : '';
-                document.getElementById('header').innerHTML = `
-                    <div class="flex items-center justify-center gap-3 mb-2">
-                        <h1 class="text-3xl font-bold text-cyan-400">24OdG</h1>
-                        ${statusHtml}
+
+                    <!-- Filtri Partite -->
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <select id="filtroCampo" onchange="loadPartite()" class="bg-gray-700 px-4 py-2 rounded-lg">
+                            <option value="">Tutti i campi</option>
+                        </select>
+                        <select id="filtroOrario" onchange="loadPartite()" class="bg-gray-700 px-4 py-2 rounded-lg">
+                            <option value="">Tutti gli orari</option>
+                        </select>
+                        <select id="filtroStato" onchange="loadPartite()" class="bg-gray-700 px-4 py-2 rounded-lg">
+                            <option value="tutte">Tutte</option>
+                            <option value="daGiocare">Da Giocare</option>
+                            <option value="completate">Completate</option>
+                        </select>
                     </div>
-                    ${!isConfigured ? '<div class="bg-yellow-900 border border-yellow-700 text-yellow-300 p-3 rounded-lg mb-4 text-sm">⚠️ <strong>Modalità Offline:</strong> Configura Supabase</div>' : ''}
-                    <p class="text-center text-gray-400">Partite: ${this.partite.length} | Completate: ${completate} | Squadre: ${Object.keys(this.squadre).length}</p>
-                `;
-            },
+                </div>
+                
+                <div id="partiteList" class="space-y-4"></div>
+            </div>
 
-            renderContenuto() {
-                if (this.vistaCorrente === 'partite') {
-                    this.renderPartite();
-                } else if (this.vistaCorrente === 'squadre') {
-                    this.renderSquadre();
-                } else if (this.vistaCorrente === 'classifica') {
-                    this.renderClassifica();
-                } else if (this.vistaCorrente === 'statistiche') {
-                    this.renderStatistiche();
-                }
-            },
+            <!-- REFERTO SECTION -->
+            <div id="refertoSection" class="section hidden">
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <h2 class="text-2xl font-bold text-cyan-400 mb-4">⚽ Referto Partita</h2>
+                    <select id="selectPartitaReferto" onchange="loadReferto()" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-4">
+                        <option value="">Seleziona partita...</option>
+                    </select>
+                </div>
+                
+                <div id="refertoContent"></div>
+            </div>
 
-            renderSquadre() {
-                const squadreList = Object.keys(this.squadre).sort();
-                document.getElementById('contenuto').innerHTML = `
-                    <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700 mb-6">
-                        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                            <h2 class="text-xl font-semibold text-cyan-400">Gestione Squadre</h2>
-                            <div class="flex gap-2 flex-wrap">
-                                <button id="btnImportSquadre" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold text-sm">📥 Import</button>
-                                <button id="btnAggiungiSquadra" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded font-semibold text-sm">➕ Aggiungi</button>
-                            </div>
-                        </div>
-                        ${squadreList.length === 0 ? `
-                            <div class="text-center text-gray-500 py-12">
-                                <p class="mb-4">Nessuna squadra registrata</p>
-                                <p class="text-sm">Importa da Google Sheets o aggiungi manualmente</p>
-                            </div>
-                        ` : `
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                ${squadreList.map(nome => `
-                                    <div class="bg-gray-700 rounded-lg p-4">
-                                        <div class="flex justify-between items-start mb-3">
-                                            <h3 class="font-bold text-lg text-cyan-300">${nome}</h3>
-                                            <button data-elimina-squadra="${nome}" class="text-red-400 hover:text-red-300">🗑️</button>
-                                        </div>
-                                        <div class="space-y-1 max-h-48 overflow-y-auto">
-                                            ${this.squadre[nome].map(g => `
-                                                <div class="text-sm bg-gray-600 rounded px-2 py-1">
-                                                    <span class="font-semibold text-cyan-400">${g.numero}</span> - ${g.nome}
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                        <div class="mt-2 text-xs text-gray-400">${this.squadre[nome].length} giocatori</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        `}
-                    </div>
-                `;
-                document.getElementById('btnImportSquadre').onclick = () => this.importaDaGoogleSheets();
-                document.getElementById('btnAggiungiSquadra').onclick = () => this.aggiungiSquadraManuale();
-                squadreList.forEach(nome => {
-                    const btn = document.querySelector(`[data-elimina-squadra="${nome}"]`);
-                    if (btn) btn.onclick = () => {
-                        if (confirm(`Eliminare la squadra "${nome}"?`)) {
-                            delete this.squadre[nome];
-                            this.salvaSquadre();
-                            this.renderSquadre();
-                            this.renderHeader();
-                        }
-                    };
-                });
-            },
-
-            aggiungiSquadraManuale() {
-                const nome = prompt('Nome della squadra:');
-                if (!nome) return;
-                const giocatori = [];
-                let continua = true;
-                while (continua) {
-                    const numero = prompt(`Squadra: ${nome}\nNumero maglia (lascia vuoto per terminare):`);
-                    if (!numero) break;
-                    const nomeGiocatore = prompt(`Squadra: ${nome}\nNome del giocatore n. ${numero}:`);
-                    if (!nomeGiocatore) break;
-                    giocatori.push({ numero: parseInt(numero), nome: nomeGiocatore });
-                    continua = confirm('Aggiungere un altro giocatore?');
-                }
-                if (giocatori.length > 0) {
-                    this.squadre[nome] = giocatori;
-                    this.salvaSquadre();
-                    this.renderSquadre();
-                    this.renderHeader();
-                    alert(`✅ Squadra "${nome}" aggiunta con ${giocatori.length} giocatori!`);
-                }
-            },
-
-            renderClassifica() {
-                const classifica = this.calcolaClassifica();
-                if (classifica.length === 0) {
-                    document.getElementById('contenuto').innerHTML = '<div class="text-center text-gray-500 py-12">Nessuna partita completata</div>';
-                    return;
-                }
-                document.getElementById('contenuto').innerHTML = `
-                    <div class="bg-gray-800 rounded-lg shadow-xl border border-gray-700 overflow-hidden">
+            <!-- CLASSIFICHE SECTION -->
+            <div id="classificheSection" class="section hidden">
+                <div class="space-y-6">
+                    <!-- Classifica Generale -->
+                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-cyan-400 mb-4">🏆 Classifica Generale</h2>
                         <div class="overflow-x-auto">
-                            <table class="w-full">
+                            <table class="w-full text-sm">
                                 <thead class="bg-gray-700">
                                     <tr>
-                                        <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Pos</th>
-                                        <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Squadra</th>
-                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">Pt</th>
-                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">G</th>
-                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">V</th>
-                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">N</th>
-                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">P</th>
-                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">GF</th>
-                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">GS</th>
-                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">DR</th>
+                                        <th class="px-4 py-2 text-left">#</th>
+                                        <th class="px-4 py-2 text-left">Squadra</th>
+                                        <th class="px-4 py-2 text-center">PT</th>
+                                        <th class="px-4 py-2 text-center">G</th>
+                                        <th class="px-4 py-2 text-center">V</th>
+                                        <th class="px-4 py-2 text-center">N</th>
+                                        <th class="px-4 py-2 text-center">P</th>
+                                        <th class="px-4 py-2 text-center">GF</th>
+                                        <th class="px-4 py-2 text-center">GS</th>
+                                        <th class="px-4 py-2 text-center">DR</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    ${classifica.map((sq, i) => `
-                                        <tr class="border-t border-gray-700 ${i < 3 ? 'bg-green-900 bg-opacity-20' : ''}">
-                                            <td class="px-4 py-3 font-bold ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</td>
-                                            <td class="px-4 py-3 font-semibold">${sq.nome}</td>
-                                            <td class="px-4 py-3 text-center font-bold text-cyan-400">${sq.punti}</td>
-                                            <td class="px-4 py-3 text-center">${sq.giocate}</td>
-                                            <td class="px-4 py-3 text-center text-green-400">${sq.vinte}</td>
-                                            <td class="px-4 py-3 text-center text-yellow-400">${sq.pareggiate}</td>
-                                            <td class="px-4 py-3 text-center text-red-400">${sq.perse}</td>
-                                            <td class="px-4 py-3 text-center">${sq.golFatti}</td>
-                                            <td class="px-4 py-3 text-center">${sq.golSubiti}</td>
-                                            <td class="px-4 py-3 text-center font-semibold ${sq.golFatti - sq.golSubiti > 0 ? 'text-green-400' : sq.golFatti - sq.golSubiti < 0 ? 'text-red-400' : ''}">${sq.golFatti - sq.golSubiti > 0 ? '+' : ''}${sq.golFatti - sq.golSubiti}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
+                                <tbody id="classificaGenerale"></tbody>
                             </table>
                         </div>
                     </div>
-                `;
-            },
 
-            renderStatistiche() {
-                const stats = this.calcolaStatistiche();
-                document.getElementById('contenuto').innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">🏆 Classifica Marcatori</h2>
-                            ${stats.marcatori.length === 0 ? '<p class="text-gray-500">Nessun gol</p>' : `
-                                <div class="space-y-2">
-                                    ${stats.marcatori.slice(0, 10).map((m, i) => `
-                                        <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3">
-                                            <div class="flex items-center gap-3">
-                                                <span class="font-bold ${i === 0 ? 'text-yellow-400 text-lg' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</span>
-                                                <span class="text-white">${m.nome}</span>
-                                            </div>
-                                            <span class="bg-cyan-900 text-cyan-300 px-3 py-1 rounded-full font-bold">${m.gol}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            `}
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">🎯 Classifica Scalpi</h2>
-                            ${stats.scalpiatori.length === 0 ? '<p class="text-gray-500">Nessuno scalpo</p>' : `
-                                <div class="space-y-2">
-                                    ${stats.scalpiatori.slice(0, 10).map((s, i) => `
-                                        <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3">
-                                            <div class="flex items-center gap-3">
-                                                <span class="font-bold ${i === 0 ? 'text-yellow-400 text-lg' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</span>
-                                                <span class="text-white">${s.nome}</span>
-                                            </div>
-                                            <span class="bg-red-900 text-red-300 px-3 py-1 rounded-full font-bold">${s.scalpi}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            `}
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">💨 Classifica Vuoti</h2>
-                            ${stats.vuotatori.length === 0 ? '<p class="text-gray-500">Nessun vuoto</p>' : `
-                                <div class="space-y-2">
-                                    ${stats.vuotatori.slice(0, 10).map((v, i) => `
-                                        <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3">
-                                            <div class="flex items-center gap-3">
-                                                <span class="font-bold ${i === 0 ? 'text-yellow-400 text-lg' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</span>
-                                                <span class="text-white">${v.nome}</span>
-                                            </div>
-                                            <span class="bg-blue-900 text-blue-300 px-3 py-1 rounded-full font-bold">${v.vuoti}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            `}
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">⭐ MVP del Torneo</h2>
-                            ${stats.mvps.length === 0 ? '<p class="text-gray-500">Nessun MVP</p>' : `
-                                <div class="space-y-2">
-                                    ${stats.mvps.slice(0, 10).map((m, i) => `
-                                        <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3">
-                                            <div class="flex items-center gap-3">
-                                                <span class="font-bold ${i === 0 ? 'text-yellow-400 text-lg' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</span>
-                                                <span class="text-white">${m.nome}</span>
-                                            </div>
-                                            <span class="bg-purple-900 text-purple-300 px-3 py-1 rounded-full font-bold">${m.volte}x</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            `}
-                        </div>
+                    <!-- Marcatori -->
+                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-yellow-400 mb-4">⚽ Top Marcatori</h2>
+                        <div id="topMarcatori" class="space-y-2"></div>
                     </div>
-                `;
-            },
 
-            renderPartite() {
-                const daGiocare = this.partite.filter(p => !p.completata);
-                const completate = this.partite.filter(p => p.completata);
-                document.getElementById('contenuto').innerHTML = `
-                    <div class="mb-6 flex gap-2 overflow-x-auto pb-2">
-                        <button data-sottovista="tutte" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.sottovistaPartite === 'tutte' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">Tutte (${this.partite.length})</button>
-                        <button data-sottovista="da_giocare" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.sottovistaPartite === 'da_giocare' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">Da Giocare (${daGiocare.length})</button>
-                        <button data-sottovista="completate" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.sottovistaPartite === 'completate' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}">Completate (${completate.length})</button>
+                    <!-- Scalpiatori -->
+                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-red-400 mb-4">🎯 Top Scalpiatori</h2>
+                        <div id="topScalpiatori" class="space-y-2"></div>
                     </div>
-                    <div id="formPartita"></div>
-                    <div id="filtri"></div>
-                    <div id="listaPartite"></div>
-                `;
-                document.querySelectorAll('[data-sottovista]').forEach(btn => {
-                    btn.onclick = () => {
-                        this.sottovistaPartite = btn.dataset.sottovista;
-                        this.renderPartite();
-                    };
-                });
-                this.renderFormPartita();
-                this.renderFiltriPartite();
-                this.renderListaPartite();
-            },
 
-            renderFormPartita() {
-                const squadreDisponibili = Object.keys(this.squadre).sort();
-                document.getElementById('formPartita').innerHTML = `
-                    <div class="bg-gray-800 rounded-lg p-6 mb-6 shadow-xl border border-gray-700">
-                        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                            <h2 class="text-xl font-semibold text-cyan-400">Nuova Partita</h2>
-                            <button id="btnImportPartite" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold text-sm">
-                                📥 Import Partite da Sheets
-                            </button>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                            <div>
-                                <label class="block text-sm mb-2 text-gray-300">Campo</label>
-                                <select id="campo" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                    ${[1,2,3,4,5,6,7,8].map(c => `<option value="${c}">${c}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm mb-2 text-gray-300">Orario</label>
-                                <input type="time" id="orario" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                            </div>
-                            <div>
-                                <label class="block text-sm mb-2 text-gray-300">Squadra A</label>
-                                ${squadreDisponibili.length > 0 ? `
-                                    <select id="squadraA" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                        <option value="">-- Seleziona --</option>
-                                        ${squadreDisponibili.map(s => `<option value="${s}">${s}</option>`).join('')}
-                                    </select>
-                                ` : `
-                                    <input type="text" id="squadraA" placeholder="Nome squadra" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                `}
-                            </div>
-                            <div>
-                                <label class="block text-sm mb-2 text-gray-300">Squadra B</label>
-                                ${squadreDisponibili.length > 0 ? `
-                                    <select id="squadraB" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                        <option value="">-- Seleziona --</option>
-                                        ${squadreDisponibili.map(s => `<option value="${s}">${s}</option>`).join('')}
-                                    </select>
-                                ` : `
-                                    <input type="text" id="squadraB" placeholder="Nome squadra" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                `}
-                            </div>
-                            <div class="flex items-end">
-                                <button id="btnAggiungi" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded transition">➕ Aggiungi</button>
-                            </div>
-                        </div>
+                    <!-- Vuotatori -->
+                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-orange-400 mb-4">❌ Top Vuotatori</h2>
+                        <div id="topVuotatori" class="space-y-2"></div>
                     </div>
-                `;
-                
-                document.getElementById('btnImportPartite').onclick = () => this.importaPartiteDaGoogleSheets();
-                
-                document.getElementById('btnAggiungi').onclick = () => {
-                    const campo = parseInt(document.getElementById('campo').value);
-                    const orario = document.getElementById('orario').value;
-                    const squadraA = document.getElementById('squadraA').value.trim();
-                    const squadraB = document.getElementById('squadraB').value.trim();
-                    if (squadraA && squadraB) {
-                        this.aggiungiPartita(campo, orario, squadraA, squadraB);
-                        if (squadreDisponibili.length > 0) {
-                            document.getElementById('squadraA').value = '';
-                            document.getElementById('squadraB').value = '';
-                        } else {
-                            document.getElementById('squadraA').value = '';
-                            document.getElementById('squadraB').value = '';
-                        }
-                        document.getElementById('orario').value = '';
-                    }
-                };
-            },
 
-            renderFiltriPartite() {
-                let partiteFiltrate = this.partite;
-                if (this.sottovistaPartite === 'da_giocare') partiteFiltrate = this.partite.filter(p => !p.completata);
-                else if (this.sottovistaPartite === 'completate') partiteFiltrate = this.partite.filter(p => p.completata);
-                const campi = [...new Set(partiteFiltrate.map(p => p.campo))].sort((a, b) => a - b);
-                document.getElementById('filtri').innerHTML = campi.length > 0 ? `
-                    <div class="mb-6">
-                        <label class="block text-sm mb-2 text-gray-300">Filtra per Campo</label>
-                        <select id="selectCampo" class="bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white w-full">
-                            <option value="tutti">Tutti i campi</option>
-                            ${campi.map(c => `<option value="${c}">Campo ${c}</option>`).join('')}
-                        </select>
+                    <!-- MVP -->
+                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-cyan-400 mb-4">⭐ Top MVP</h2>
+                        <div id="topMVP" class="space-y-2"></div>
                     </div>
-                ` : '';
-                if (campi.length > 0) {
-                    const selectCampo = document.getElementById('selectCampo');
-                    selectCampo.value = this.filtroCampo;
-                    selectCampo.onchange = (e) => {
-                        this.filtroCampo = e.target.value;
-                        this.renderListaPartite();
-                    };
-                }
-            },
+                </div>
+            </div>
 
-            renderListaPartite() {
-                let partite = this.partite;
-                if (this.sottovistaPartite === 'da_giocare') partite = partite.filter(p => !p.completata);
-                else if (this.sottovistaPartite === 'completate') partite = partite.filter(p => p.completata);
-                if (this.filtroCampo !== 'tutti') partite = partite.filter(p => p.campo === parseInt(this.filtroCampo));
-                
-                const raggruppate = {};
-                partite.forEach(p => {
-                    const chiave = `${p.orario || 'Nessun orario'}_Campo ${p.campo}`;
-                    if (!raggruppate[chiave]) raggruppate[chiave] = [];
-                    raggruppate[chiave].push(p);
-                });
-                
-                if (Object.keys(raggruppate).length === 0) {
-                    document.getElementById('listaPartite').innerHTML = '<div class="text-center text-gray-500 py-12">Nessuna partita</div>';
-                    return;
-                }
-                
-                document.getElementById('listaPartite').innerHTML = Object.keys(raggruppate).sort().map(chiave => {
-                    const [orario, campo] = chiave.split('_');
-                    return `
-                        <div class="mb-6">
-                            <div class="bg-gray-700 px-4 py-2 rounded-t-lg flex justify-between items-center">
-                                <div class="font-semibold text-cyan-300">⏰ ${orario} - 🏟️ ${campo}</div>
-                                <div class="text-sm text-gray-400">${raggruppate[chiave].length} partite</div>
-                            </div>
-                            <div class="space-y-4 mt-2">
-                                ${raggruppate[chiave].map(p => this.renderPartita(p)).join('')}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                partite.forEach(p => this.attachEventHandlers(p));
-            },
-
-            renderPartita(p) {
-                return `
-                    <div class="bg-gray-800 rounded-lg p-6 shadow-xl border ${p.completata ? 'border-green-600' : 'border-gray-700'}">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                ${p.completata ? '<span class="bg-green-900 text-green-300 px-3 py-1 rounded-full text-sm font-semibold">✓ Completata</span>' : '<span class="bg-blue-900 text-blue-300 px-3 py-1 rounded-full text-sm font-semibold">In corso</span>'}
-                            </div>
-                            <button data-delete="${p.id}" class="text-red-500 hover:text-red-400">🗑️</button>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            ${this.renderSquadraPartita(p, 'A')}
-                            ${this.renderSquadraPartita(p, 'B')}
-                        </div>
-                        ${!p.completata ? `
-                            <div class="mt-6 pt-6 border-t border-gray-700">
-                                <h3 class="text-lg font-semibold mb-4 text-cyan-400">Finalizza Partita</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                                    <div>
-                                        <label class="block text-sm mb-2 text-gray-300">MVP ${p.squadraA}</label>
-                                        ${this.squadre[p.squadraA] ? `
-                                            <select id="mvp-a-${p.id}" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                                <option value="">-- Seleziona --</option>
-                                                ${this.squadre[p.squadraA].map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
-                                            </select>
-                                        ` : `
-                                            <input type="text" id="mvp-a-${p.id}" placeholder="Nome" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                        `}
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm mb-2 text-gray-300">MVP ${p.squadraB}</label>
-                                        ${this.squadre[p.squadraB] ? `
-                                            <select id="mvp-b-${p.id}" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                                <option value="">-- Seleziona --</option>
-                                                ${this.squadre[p.squadraB].map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
-                                            </select>
-                                        ` : `
-                                            <input type="text" id="mvp-b-${p.id}" placeholder="Nome" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                        `}
-                                    </div>
-                                </div>
-                                <button data-finalizza="${p.id}" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded">🏆 Finalizza Partita</button>
-                            </div>
-                        ` : `
-                            <div class="mt-6 pt-6 border-t border-gray-700">
-                                <div class="grid grid-cols-2 gap-4 text-center mb-4">
-                                    <div class="bg-gray-700 rounded-lg p-4">
-                                        <div class="text-gray-400 text-sm mb-1">${p.squadraA}</div>
-                                        <div class="text-3xl font-bold text-cyan-400">${p.punteggioA}</div>
-                                        <div class="text-sm text-gray-400 mt-2">Punti: ${p.puntiA}</div>
-                                        ${p.mvpA ? `<div class="text-sm text-purple-400 mt-2">⭐ MVP: ${p.mvpA}</div>` : ''}
-                                    </div>
-                                    <div class="bg-gray-700 rounded-lg p-4">
-                                        <div class="text-gray-400 text-sm mb-1">${p.squadraB}</div>
-                                        <div class="text-3xl font-bold text-cyan-400">${p.punteggioB}</div>
-                                        <div class="text-sm text-gray-400 mt-2">Punti: ${p.puntiB}</div>
-                                        ${p.mvpB ? `<div class="text-sm text-purple-400 mt-2">⭐ MVP: ${p.mvpB}</div>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `}
-                    </div>
-                `;
-            },
-
-            renderSquadraPartita(p, squadra) {
-                const nome = p[`squadra${squadra}`];
-                const gol = p[`gol${squadra}`];
-                const scalpi = p[`scalpi${squadra}`];
-                const vuoti = p[`vuoti${squadra}`];
-                const espulsi = p[`espulsi${squadra}`];
-                const giocatori = this.squadre[nome] || [];
-                const punteggio = p[`punteggio${squadra}`];
-                
-                // Conta vuoti per giocatore
-                const vuotiPerGiocatore = {};
-                vuoti.forEach(v => {
-                    vuotiPerGiocatore[v] = (vuotiPerGiocatore[v] || 0) + 1;
-                });
-                
-                return `
-                    <div class="bg-gray-700 rounded-lg p-4">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-bold text-cyan-300">${nome}</h3>
-                            <div class="text-2xl font-bold text-yellow-400">${punteggio}</div>
-                        </div>
-                        
-                        ${espulsi.length > 0 ? `
-                            <div class="mb-4 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg p-3">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <span class="text-red-400">🚫</span>
-                                    <span class="font-semibold text-red-300">Espulsi (${espulsi.length})</span>
-                                </div>
-                                <div class="space-y-1">
-                                    ${espulsi.map((e, i) => `
-                                        <div class="flex justify-between items-center bg-red-900 bg-opacity-40 rounded px-3 py-2 text-sm">
-                                            <span class="text-red-200">${e}</span>
-                                            ${!p.completata ? `<button data-rientra-espulso="${p.id}-${squadra}-${i}" class="text-green-400 hover:text-green-300 text-xs">↩️ Rientra</button>` : ''}
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="mb-4">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="text-yellow-400">🏆</span>
-                                <span class="font-semibold text-gray-200">Gol (${gol.length})</span>
-                            </div>
-                            ${!p.completata ? `
-                                <div class="flex gap-2 mb-2">
-                                    ${giocatori.length > 0 ? `
-                                        <select id="gol-${squadra}-${p.id}" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                                            <option value="">-- Seleziona --</option>
-                                            ${giocatori.map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
-                                        </select>
-                                    ` : `
-                                        <input type="text" id="gol-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                                    `}
-                                    <button data-add-gol="${p.id}-${squadra}" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded">➕</button>
-                                </div>
-                            ` : ''}
-                            <div class="space-y-1">
-                                ${gol.map((g, i) => `
-                                    <div class="flex justify-between items-center bg-gray-600 rounded px-3 py-2 text-sm">
-                                        <span>${g}</span>
-                                        ${!p.completata ? `<button data-del-gol="${p.id}-${squadra}-${i}" class="text-red-400">🗑️</button>` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="text-red-400">🎯</span>
-                                <span class="font-semibold text-gray-200">Scalpi (${scalpi.length})</span>
-                            </div>
-                            ${!p.completata ? `
-                                <div class="flex gap-2 mb-2">
-                                    ${giocatori.length > 0 ? `
-                                        <select id="scalpo-${squadra}-${p.id}" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                                            <option value="">-- Seleziona --</option>
-                                            ${giocatori.map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
-                                        </select>
-                                    ` : `
-                                        <input type="text" id="scalpo-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                                    `}
-                                    <button data-add-scalpo="${p.id}-${squadra}" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded">➕</button>
-                                </div>
-                            ` : ''}
-                            <div class="space-y-1">
-                                ${scalpi.map((s, i) => `
-                                    <div class="flex justify-between items-center bg-gray-600 rounded px-3 py-2 text-sm">
-                                        <span>${s}</span>
-                                        ${!p.completata ? `<button data-del-scalpo="${p.id}-${squadra}-${i}" class="text-red-400">🗑️</button>` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-blue-400">💨</span>
-                                    <span class="font-semibold text-gray-200">Vuoti (${vuoti.length})</span>
-                                </div>
-                                ${!p.completata && vuoti.length > 0 ? `
-                                    <button data-azzera-vuoti="${p.id}-${squadra}" class="text-xs bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded">
-                                        🔄 Azzera 1° Tempo
-                                    </button>
-                                ` : ''}
-                            </div>
-                            ${!p.completata ? `
-                                <div class="flex gap-2 mb-2">
-                                    ${giocatori.length > 0 ? `
-                                        <select id="vuoto-${squadra}-${p.id}" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                                            <option value="">-- Seleziona --</option>
-                                            ${giocatori.map(g => {
-                                                const giocatoreNome = `${g.numero} - ${g.nome}`;
-                                                const conteggioVuoti = vuotiPerGiocatore[giocatoreNome] || 0;
-                                                const isEspulso = espulsi.includes(giocatoreNome);
-                                                return `<option value="${giocatoreNome}" ${isEspulso ? 'disabled' : ''}>${giocatoreNome}${conteggioVuoti > 0 ? ` (${conteggioVuoti} vuoti)` : ''}${isEspulso ? ' [ESPULSO]' : ''}</option>`;
-                                            }).join('')}
-                                        </select>
-                                    ` : `
-                                        <input type="text" id="vuoto-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                                    `}
-                                    <button data-add-vuoto="${p.id}-${squadra}" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded">➕</button>
-                                </div>
-                            ` : ''}
-                            <div class="space-y-1">
-                                ${vuoti.map((v, i) => {
-                                    const conteggioGiocatore = vuotiPerGiocatore[v];
-                                    return `
-                                        <div class="flex justify-between items-center bg-gray-600 rounded px-3 py-2 text-sm ${conteggioGiocatore >= 3 ? 'border-2 border-red-500' : ''}">
-                                            <span>${v} ${conteggioGiocatore >= 2 ? `<span class="text-orange-400">(${conteggioGiocatore}/3)</span>` : ''}</span>
-                                            ${!p.completata ? `<button data-del-vuoto="${p.id}-${squadra}-${i}" class="text-red-400">🗑️</button>` : ''}
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
-
-            attachEventHandlers(p) {
-                const btnDel = document.querySelector(`[data-delete="${p.id}"]`);
-                if (btnDel) btnDel.onclick = () => this.eliminaPartita(p.id);
-                
-                const btnFin = document.querySelector(`[data-finalizza="${p.id}"]`);
-                if (btnFin) btnFin.onclick = () => {
-                    const mvpA = document.getElementById(`mvp-a-${p.id}`).value;
-                    const mvpB = document.getElementById(`mvp-b-${p.id}`).value;
-                    const scoreA = p.golA.length;
-                    const scoreB = p.golB.length;
-                    let puntiA = 0, puntiB = 0;
-                    if (scoreA > scoreB) puntiA = 3;
-                    else if (scoreB > scoreA) puntiB = 3;
-                    else { puntiA = 1; puntiB = 1; }
-                    this.aggiornaPartita(p.id, { punteggioA: scoreA, punteggioB: scoreB, puntiA, puntiB, mvpA, mvpB, completata: true });
-                };
-                
-                ['A', 'B'].forEach(sq => {
-                    // Gestione Gol
-                    const btnGol = document.querySelector(`[data-add-gol="${p.id}-${sq}"]`);
-                    if (btnGol) btnGol.onclick = () => {
-                        const input = document.getElementById(`gol-${sq}-${p.id}`);
-                        const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
-                        if (valore) {
-                            const nuoviGol = [...p[`gol${sq}`], valore];
-                            const nuovoPunteggio = nuoviGol.length;
-                            this.aggiornaPartita(p.id, { [`gol${sq}`]: nuoviGol, [`punteggio${sq}`]: nuovoPunteggio });
-                            input.value = '';
-                        }
-                    };
-                    
-                    // Gestione Scalpi
-                    const btnScalpo = document.querySelector(`[data-add-scalpo="${p.id}-${sq}"]`);
-                    if (btnScalpo) btnScalpo.onclick = () => {
-                        const input = document.getElementById(`scalpo-${sq}-${p.id}`);
-                        const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
-                        if (valore) {
-                            const nuoviScalpi = [...p[`scalpi${sq}`], valore];
-                            this.aggiornaPartita(p.id, { [`scalpi${sq}`]: nuoviScalpi });
-                            input.value = '';
-                        }
-                    };
-                    
-                    // Gestione Vuoti
-                    const btnVuoto = document.querySelector(`[data-add-vuoto="${p.id}-${sq}"]`);
-                    if (btnVuoto) btnVuoto.onclick = () => {
-                        const input = document.getElementById(`vuoto-${sq}-${p.id}`);
-                        const valore = input.tagName === 'SELECT' ? input.value : input.value.trim();
-                        if (valore) {
-                            // Controlla se il giocatore è già espulso
-                            if (p[`espulsi${sq}`].includes(valore)) {
-                                alert('⚠️ Questo giocatore è già espulso!');
-                                return;
-                            }
-                            this.aggiungiVuoto(p, sq, valore);
-                            input.value = '';
-                        }
-                    };
-                    
-                    // Azzera vuoti
-                    const btnAzzera = document.querySelector(`[data-azzera-vuoti="${p.id}-${sq}"]`);
-                    if (btnAzzera) btnAzzera.onclick = () => {
-                        this.azzeraVuoti(p, sq);
-                    };
-                    
-                    // Rientro espulsi
-                    p[`espulsi${sq}`].forEach((_, i) => {
-                        const btn = document.querySelector(`[data-rientra-espulso="${p.id}-${sq}-${i}"]`);
-                        if (btn) btn.onclick = () => {
-                            this.rientraEspulso(p, sq, p[`espulsi${sq}`][i]);
-                        };
-                    });
-                    
-                    // Eliminazione Gol
-                    p[`gol${sq}`].forEach((_, i) => {
-                        const btn = document.querySelector(`[data-del-gol="${p.id}-${sq}-${i}"]`);
-                        if (btn) btn.onclick = () => {
-                            const nuoviGol = [...p[`gol${sq}`]];
-                            nuoviGol.splice(i, 1);
-                            const nuovoPunteggio = nuoviGol.length;
-                            this.aggiornaPartita(p.id, { [`gol${sq}`]: nuoviGol, [`punteggio${sq}`]: nuovoPunteggio });
-                        };
-                    });
-                    
-                    // Eliminazione Scalpi
-                    p[`scalpi${sq}`].forEach((_, i) => {
-                        const btn = document.querySelector(`[data-del-scalpo="${p.id}-${sq}-${i}"]`);
-                        if (btn) btn.onclick = () => {
-                            const nuoviScalpi = [...p[`scalpi${sq}`]];
-                            nuoviScalpi.splice(i, 1);
-                            this.aggiornaPartita(p.id, { [`scalpi${sq}`]: nuoviScalpi });
-                        };
-                    });
-                    
-                    // Eliminazione Vuoti
-                    p[`vuoti${sq}`].forEach((_, i) => {
-                        const btn = document.querySelector(`[data-del-vuoto="${p.id}-${sq}-${i}"]`);
-                        if (btn) btn.onclick = () => {
-                            const nuoviVuoti = [...p[`vuoti${sq}`]];
-                            nuoviVuoti.splice(i, 1);
-                            this.aggiornaPartita(p.id, { [`vuoti${sq}`]: nuoviVuoti });
-                        };
-                    });
-                });
-            }
-        };
-
-        window.addEventListener('DOMContentLoaded', () => {
-            app.init();
-            
-            // Registra Service Worker per PWA
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(() => console.log('✅ PWA pronta!'))
-                    .catch(err => console.log('Service Worker:', err));
-            }
-        });
-    </script>
-</head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
-    <div class="max-w-6xl mx-auto p-4">
-        <header id="header" class="mb-8"></header>
-        <div id="nav"></div>
-        <div id="contenuto"></div>
+        </div>
     </div>
-</body>
-</html>
+
+    <script>
+        // ============================================
+        // CONFIGURAZIONE SUPABASE
+        // ============================================
+        const SUPABASE_URL = 'https://bflagmexshprrbigcjzj.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk2OTk5ODksImV4cCI6MjA0NTI3NTk4OX0.xQdwqXmLvEKkOqmkJZkfvVnGZ5ILqRzUwLmYHq3pMWg';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ============================================
+        // WHITELIST EMAIL ARBITRI
+        // ============================================
+        const ARBITRI_AUTORIZZATI = [
+            'stepengo@gmail.com',
+            'arbitro1@24odg.it',
+            'arbitro2@24odg.it',
+            'test@24odg.test'  // Email di test
+        ];
+
+        // ============================================
+        // AUTENTICAZIONE
+        // ============================================
+        function checkAuth() {
+            const userEmail = localStorage.getItem('userEmail');
+            if (userEmail && ARBITRI_AUTORIZZATI.includes(userEmail)) {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                document.getElementById('userEmailDisplay').textContent = userEmail;
+                loadSquadre();
+                loadPartite();
+                showSection('squadre');
+            } else {
+                localStorage.removeItem('userEmail');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('mainApp').classList.add('hidden');
+            }
+        }
+
+        function login() {
+            const email = document.getElementById('emailInput').value.trim().toLowerCase();
+            const errorEl = document.getElementById('loginError');
+            
+            if (!email) {
+                errorEl.textContent = 'Inserisci un\'email valida';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            if (ARBITRI_AUTORIZZATI.includes(email)) {
+                localStorage.setItem('userEmail', email);
+                errorEl.classList.add('hidden');
+                checkAuth();
+            } else {
+                errorEl.textContent = 'Email non autorizzata';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            if (confirm('Vuoi uscire?')) {
+                localStorage.removeItem('userEmail');
+                checkAuth();
+            }
+        }
+
+        // ============================================
+        // NAVIGATION
+        // ============================================
+        function showSection(sectionName) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(sectionName + 'Section').classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-gray-700', 'text-cyan-400', 'border-b-2', 'border-cyan-400');
+            });
+            event.target.classList.add('bg-gray-700', 'text-cyan-400', 'border-b-2', 'border-cyan-400');
+
+            if (sectionName === 'classifiche') {
+                loadClassifiche();
+            }
+            if (sectionName === 'referto') {
+                loadPartiteSelect();
+            }
+        }
+
+        // ============================================
+        // GESTIONE SQUADRE
+        // ============================================
+        async function loadSquadre() {
+            const { data, error } = await supabase
+                .from('squadre')
+                .select('*')
+                .order('nome_squadra', { ascending: true })
+                .order('numero', { ascending: true });
+
+            if (error) {
+                console.error('Errore caricamento squadre:', error);
+                return;
+            }
+
+            const squadreByTeam = {};
+            data.forEach(row => {
+                if (!squadreByTeam[row.nome_squadra]) {
+                    squadreByTeam[row.nome_squadra] = [];
+                }
+                squadreByTeam[row.nome_squadra].push(row);
+            });
+
+            const container = document.getElementById('squadreList');
+            container.innerHTML = '';
+
+            Object.keys(squadreByTeam).forEach(teamName => {
+                const players = squadreByTeam[teamName];
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800 rounded-lg shadow-lg p-4';
+                card.innerHTML = `
+                    <h3 class="text-xl font-bold text-cyan-400 mb-3">${teamName}</h3>
+                    <div class="space-y-2">
+                        ${players.map(p => `
+                            <div class="flex items-center gap-2 bg-gray-700 px-3 py-2 rounded">
+                                <span class="bg-cyan-500 text-white font-bold px-2 py-1 rounded text-sm">${p.numero}</span>
+                                <span>${p.nome_giocatore}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function importSquadre() {
+            const url = document.getElementById('sheetUrlSquadre').value.trim();
+            if (!url) {
+                alert('Inserisci URL Google Sheets');
+                return;
+            }
+
+            const csvUrl = url.replace('/edit#gid=', '/export?format=csv&gid=').replace('/edit?usp=sharing', '/export?format=csv');
+            
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                complete: async function(results) {
+                    const rows = results.data.filter(row => row.Squadra && row.Numero && row.Nome);
+                    
+                    if (rows.length === 0) {
+                        alert('Nessun dato valido trovato');
+                        return;
+                    }
+
+                    for (const row of rows) {
+                        await supabase.from('squadre').insert({
+                            nome_squadra: row.Squadra.trim(),
+                            numero: parseInt(row.Numero),
+                            nome_giocatore: row.Nome.trim()
+                        });
+                    }
+
+                    alert(`Importate ${rows.length} righe!`);
+                    loadSquadre();
+                },
+                error: function(error) {
+                    alert('Errore import: ' + error.message);
+                }
+            });
+        }
+
+        async function aggiungiSquadraManuale() {
+            const nomeSquadra = prompt('Nome squadra:');
+            if (!nomeSquadra) return;
+
+            while (true) {
+                const numero = prompt('Numero maglia (lascia vuoto per finire):');
+                if (!numero) break;
+
+                const nome = prompt('Nome giocatore:');
+                if (!nome) break;
+
+                await supabase.from('squadre').insert({
+                    nome_squadra: nomeSquadra.trim(),
+                    numero: parseInt(numero),
+                    nome_giocatore: nome.trim()
+                });
+            }
+
+            loadSquadre();
+        }
+
+        // ============================================
+        // GESTIONE PARTITE
+        // ============================================
+        async function loadPartite() {
+            let query = supabase.from('partite').select('*').order('campo').order('orario');
+
+            const filtroCampo = document.getElementById('filtroCampo').value;
+            const filtroOrario = document.getElementById('filtroOrario').value;
+            const filtroStato = document.getElementById('filtroStato').value;
+
+            if (filtroCampo) query = query.eq('campo', parseInt(filtroCampo));
+            if (filtroOrario) query = query.eq('orario', filtroOrario);
+            if (filtroStato === 'daGiocare') query = query.eq('completata', false);
+            if (filtroStato === 'completate') query = query.eq('completata', true);
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Errore caricamento partite:', error);
+                return;
+            }
+
+            // Popola filtri
+            const campi = [...new Set(data.map(p => p.campo))].sort((a,b) => a-b);
+            const orari = [...new Set(data.map(p => p.orario))].sort();
+
+            const filtroCampoEl = document.getElementById('filtroCampo');
+            const currentCampo = filtroCampoEl.value;
+            filtroCampoEl.innerHTML = '<option value="">Tutti i campi</option>' +
+                campi.map(c => `<option value="${c}" ${c == currentCampo ? 'selected' : ''}>Campo ${c}</option>`).join('');
+
+            const filtroOrarioEl = document.getElementById('filtroOrario');
+            const currentOrario = filtroOrarioEl.value;
+            filtroOrarioEl.innerHTML = '<option value="">Tutti gli orari</option>' +
+                orari.map(o => `<option value="${o}" ${o == currentOrario ? 'selected' : ''}>${o}</option>`).join('');
+
+            // Mostra partite
+            const container = document.getElementById('partiteList');
+            container.innerHTML = '';
+
+            data.forEach(partita => {
+                const card = document.createElement('div');
+                card.className = `bg-gray-800 rounded-lg shadow-lg p-4 ${partita.completata ? 'opacity-60' : ''}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="bg-cyan-500 px-3 py-1 rounded-full text-sm font-bold">Campo ${partita.campo}</span>
+                            <span class="bg-gray-700 px-3 py-1 rounded-full text-sm ml-2">${partita.orario}</span>
+                        </div>
+                        ${partita.completata ? '<span class="bg-green-500 px-3 py-1 rounded-full text-sm">✓ Completata</span>' : ''}
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 items-center">
+                        <div class="text-right">
+                            <div class="font-bold text-lg">${partita.squadra_a}</div>
+                            <div class="text-3xl font-bold text-cyan-400">${partita.punteggio_a}</div>
+                        </div>
+                        <div class="text-center text-gray-500 font-bold">VS</div>
+                        <div class="text-left">
+                            <div class="font-bold text-lg">${partita.squadra_b}</div>
+                            <div class="text-3xl font-bold text-cyan-400">${partita.punteggio_b}</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function importPartite() {
+            const url = document.getElementById('sheetUrlPartite').value.trim();
+            if (!url) {
+                alert('Inserisci URL Google Sheets');
+                return;
+            }
+
+            const csvUrl = url.replace('/edit#gid=', '/export?format=csv&gid=').replace('/edit?usp=sharing', '/export?format=csv');
+            
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                complete: async function(results) {
+                    const rows = results.data.filter(row => row.Campo && row.Orario && row.SquadraA && row.SquadraB);
+                    
+                    if (rows.length === 0) {
+                        alert('Nessun dato valido trovato');
+                        return;
+                    }
+
+                    for (const row of rows) {
+                        await supabase.from('partite').insert({
+                            campo: parseInt(row.Campo),
+                            orario: row.Orario.trim(),
+                            squadra_a: row.SquadraA.trim(),
+                            squadra_b: row.SquadraB.trim()
+                        });
+                    }
+
+                    alert(`Importate ${rows.length} partite!`);
+                    loadPartite();
+                },
+                error: function(error) {
+                    alert('Errore import: ' + error.message);
+                }
+            });
+        }
+
+        async function aggiungiPartitaManuale() {
+            const campo = prompt('Numero campo:');
+            if (!campo) return;
+
+            const orario = prompt('Orario (es. 10:30):');
+            if (!orario) return;
+
+            const squadraA = prompt('Squadra A:');
+            if (!squadraA) return;
+
+            const squadraB = prompt('Squadra B:');
+            if (!squadraB) return;
+
+            await supabase.from('partite').insert({
+                campo: parseInt(campo),
+                orario: orario.trim(),
+                squadra_a: squadraA.trim(),
+                squadra_b: squadraB.trim()
+            });
+
+            loadPartite();
+        }
+
+        // ============================================
+        // REFERTO PARTITA
+        // ============================================
+        let currentPartitaId = null;
+        let currentPartita = null;
+        let giocatoriA = [];
+        let giocatoriB = [];
+
+        async function loadPartiteSelect() {
+            const { data } = await supabase
+                .from('partite')
+                .select('*')
+                .eq('completata', false)
+                .order('campo')
+                .order('orario');
+
+            const select = document.getElementById('selectPartitaReferto');
+            select.innerHTML = '<option value="">Seleziona partita...</option>' +
+                data.map(p => `<option value="${p.id}">Campo ${p.campo} - ${p.orario} - ${p.squadra_a} vs ${p.squadra_b}</option>`).join('');
+        }
+
+        async function loadReferto() {
+            const partitaId = document.getElementById('selectPartitaReferto').value;
+            if (!partitaId) {
+                document.getElementById('refertoContent').innerHTML = '';
+                return;
+            }
+
+            currentPartitaId = partitaId;
+
+            const { data: partita } = await supabase
+                .from('partite')
+                .select('*')
+                .eq('id', partitaId)
+                .single();
+
+            currentPartita = partita;
+
+            const { data: squadraAData } = await supabase
+                .from('squadre')
+                .select('*')
+                .eq('nome_squadra', partita.squadra_a)
+                .order('numero');
+
+            const { data: squadraBData } = await supabase
+                .from('squadre')
+                .select('*')
+                .eq('nome_squadra', partita.squadra_b)
+                .order('numero');
+
+            giocatoriA = squadraAData || [];
+            giocatoriB = squadraBData || [];
+
+            renderReferto();
+        }
+
+        function renderReferto() {
+            if (!currentPartita) return;
+
+            const container = document.getElementById('refertoContent');
+            
+            container.innerHTML = `
+                <!-- Header Partita -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="bg-cyan-500 px-4 py-2 rounded-full font-bold">Campo ${currentPartita.campo}</span>
+                        <span class="bg-gray-700 px-4 py-2 rounded-full">${currentPartita.orario}</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 items-center text-center">
+                        <div>
+                            <div class="text-xl font-bold mb-2">${currentPartita.squadra_a}</div>
+                            <div class="text-5xl font-bold text-cyan-400">${currentPartita.punteggio_a}</div>
+                        </div>
+                        <div class="text-gray-500 font-bold text-2xl">VS</div>
+                        <div>
+                            <div class="text-xl font-bold mb-2">${currentPartita.squadra_b}</div>
+                            <div class="text-5xl font-bold text-cyan-400">${currentPartita.punteggio_b}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Azioni Primo Tempo -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-yellow-400 mb-4">⚽ Primo Tempo</h3>
+                    <button onclick="azzeraPrimoTempo()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition mb-4">
+                        🔄 Azzera 1° Tempo (Reset Vuoti + Rientro Espulsi)
+                    </button>
+                </div>
+
+                <!-- Squadra A -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-cyan-400 mb-4">${currentPartita.squadra_a}</h3>
+                    
+                    <!-- Gol -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-yellow-400">⚽ Gol</label>
+                        <select id="golSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiGol('a')" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 rounded-lg transition">
+                            Aggiungi Gol
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Marcatori: ${(currentPartita.gol_a || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Scalpi -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-red-400">🎯 Scalpi</label>
+                        <select id="scalpoSelectA" class="w-full bg-gray-700 px-4
