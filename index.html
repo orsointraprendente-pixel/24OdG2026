@@ -187,7 +187,7 @@
         // CONFIGURAZIONE SUPABASE
         // ============================================
         const SUPABASE_URL = 'https://bflagmexshprrbigcjzj.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTk3MDMsImV4cCI6MjA3NTc5NTcwM30.29WDB3dfj9a2jOjTJRT28nQcjMqEXoDdfWXTWMNJbE8';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk2OTk5ODksImV4cCI6MjA0NTI3NTk4OX0.xQdwqXmLvEKkOqmkJZkfvVnGZ5ILqRzUwLmYHq3pMWg';
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -220,30 +220,25 @@
             }
         }
 
-function login() {
-    const email = document.getElementById('emailInput').value.trim().toLowerCase();
-    const errorEl = document.getElementById('loginError');
-    
-    console.log('Email inserita:', email);  // ← AGGIUNGI QUESTO
-    console.log('Email autorizzate:', ARBITRI_AUTORIZZATI);  // ← E QUESTO
-    
-    if (!email) {
-        errorEl.textContent = 'Inserisci un\'email valida';
-        errorEl.classList.remove('hidden');
-        return;
-    }
+        function login() {
+            const email = document.getElementById('emailInput').value.trim().toLowerCase();
+            const errorEl = document.getElementById('loginError');
+            
+            if (!email) {
+                errorEl.textContent = 'Inserisci un\'email valida';
+                errorEl.classList.remove('hidden');
+                return;
+            }
 
-    if (ARBITRI_AUTORIZZATI.includes(email)) {
-        console.log('✅ Email trovata!');  // ← E QUESTO
-        localStorage.setItem('userEmail', email);
-        errorEl.classList.add('hidden');
-        checkAuth();
-    } else {
-        console.log('❌ Email NON autorizzata');  // ← E QUESTO
-        errorEl.textContent = 'Email non autorizzata';
-        errorEl.classList.remove('hidden');
-    }
-}
+            if (ARBITRI_AUTORIZZATI.includes(email)) {
+                localStorage.setItem('userEmail', email);
+                errorEl.classList.add('hidden');
+                checkAuth();
+            } else {
+                errorEl.textContent = 'Email non autorizzata';
+                errorEl.classList.remove('hidden');
+            }
+        }
 
         function logout() {
             if (confirm('Vuoi uscire?')) {
@@ -469,6 +464,12 @@ function login() {
             giocatoriA = squadraAData || [];
             giocatoriB = squadraBData || [];
 
+            // Reset timer per nuova partita
+            pauseTimer();
+            timerSeconds = 900;
+            currentHalf = 1;
+            timerRunning = false;
+
             // Nascondi lista partite, mostra referto
             document.getElementById('partiteListView').classList.add('hidden');
             document.getElementById('partitaRefertoView').classList.remove('hidden');
@@ -478,10 +479,19 @@ function login() {
 
         // Funzione per tornare alla lista partite
         function tornaAllePartite() {
+            // Ferma timer se in esecuzione
+            pauseTimer();
+            
             document.getElementById('partiteListView').classList.remove('hidden');
             document.getElementById('partitaRefertoView').classList.add('hidden');
             currentPartitaId = null;
             currentPartita = null;
+            
+            // Reset timer
+            timerSeconds = 900;
+            currentHalf = 1;
+            timerRunning = false;
+            
             loadPartite();
         }
 
@@ -690,13 +700,210 @@ function login() {
                     </div>
                 </div>
 
+                <!-- TIMER PARTITA -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <div class="text-center mb-4">
+                        <div class="text-sm text-gray-400 mb-2" id="currentHalf">1° Tempo</div>
+                        <div class="text-6xl font-bold text-cyan-400 mb-4 font-mono" id="timerDisplay">15:00</div>
+                        <div class="flex gap-3 justify-center flex-wrap">
+                            <button id="startTimerBtn" onclick="startTimer()" class="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-lg font-bold transition flex items-center gap-2">
+                                ▶️ Avvia
+                            </button>
+                            <button id="pauseTimerBtn" onclick="pauseTimer()" class="hidden bg-yellow-500 hover:bg-yellow-600 px-6 py-3 rounded-lg font-bold transition flex items-center gap-2">
+                                ⏸️ Pausa
+                            </button>
+                            <button onclick="resetTimer()" class="bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-lg font-bold transition flex items-center gap-2">
+                                🔄 Reset
+                            </button>
+                            <button onclick="switchHalf()" class="bg-purple-500 hover:bg-purple-600 px-6 py-3 rounded-lg font-bold transition flex items-center gap-2" ${currentHalf === 2 ? 'disabled' : ''}>
+                                ⏭️ 2° Tempo
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-center text-sm text-gray-400 mt-3">
+                        ⏱️ Timer: 15 minuti per tempo
+                    </div>
+                </div>
+
                 <!-- Azioni Primo Tempo -->
                 <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <h3 class="text-xl font-bold text-yellow-400 mb-4">⚽ Primo Tempo</h3>
-                    <button onclick="azzeraPrimoTempo()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition mb-4">
+                    <h3 class="text-xl font-bold text-yellow-400 mb-4">⚽ Gestione Tempo</h3>
+                    <button onclick="azzeraPrimoTempo()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition mb-2">
                         🔄 Azzera 1° Tempo (Reset Vuoti + Rientro Espulsi)
                     </button>
+                    <p class="text-sm text-gray-400 text-center">Da usare all'intervallo tra i tempi</p>
                 </div>
+
+                <!-- Squadra A -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-cyan-400 mb-4">${currentPartita.squadra_a}</h3>
+                    
+                    <!-- Gol -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-yellow-400">⚽ Gol</label>
+                        <select id="golSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiGol('a')" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 rounded-lg transition">
+                            Aggiungi Gol
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Marcatori: ${(currentPartita.gol_a || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Scalpi -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-red-400">🎯 Scalpi</label>
+                        <select id="scalpoSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiScalpo('a')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition">
+                            Aggiungi Scalpo
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Scalpi: ${(currentPartita.scalpi_a || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Vuoti -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-orange-400">❌ Vuoti</label>
+                        <select id="vuotoSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiVuoto('a')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg transition">
+                            Aggiungi Vuoto
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Vuoti: ${(currentPartita.vuoti_a || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Espulsi -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-red-600">🚫 Espulsi</label>
+                        <div class="bg-gray-700 px-4 py-3 rounded-lg">
+                            ${(currentPartita.espulsi_a || []).length > 0 ? 
+                                currentPartita.espulsi_a.map(e => `
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span>${e}</span>
+                                        <button onclick="rientroEspulso('a', '${e}')" class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-sm">
+                                            Rientro
+                                        </button>
+                                    </div>
+                                `).join('') 
+                                : '<span class="text-gray-400">Nessun espulso</span>'}
+                        </div>
+                    </div>
+
+                    <!-- MVP -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-cyan-400">⭐ MVP</label>
+                        <select id="mvpSelectA" onchange="aggiungiMVP('a')" class="w-full bg-gray-700 px-4 py-2 rounded-lg">
+                            <option value="">Seleziona MVP...</option>
+                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}" ${currentPartita.mvp_a === g.nome_giocatore ? 'selected' : ''}>${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <div class="mt-2 text-sm text-cyan-300">
+                            MVP attuale: ${currentPartita.mvp_a || 'Nessuno'}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Squadra B -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-cyan-400 mb-4">${currentPartita.squadra_b}</h3>
+                    
+                    <!-- Gol -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-yellow-400">⚽ Gol</label>
+                        <select id="golSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiGol('b')" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 rounded-lg transition">
+                            Aggiungi Gol
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Marcatori: ${(currentPartita.gol_b || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Scalpi -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-red-400">🎯 Scalpi</label>
+                        <select id="scalpoSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiScalpo('b')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition">
+                            Aggiungi Scalpo
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Scalpi: ${(currentPartita.scalpi_b || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Vuoti -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-orange-400">❌ Vuoti</label>
+                        <select id="vuotoSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiVuoto('b')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg transition">
+                            Aggiungi Vuoto
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Vuoti: ${(currentPartita.vuoti_b || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Espulsi -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-red-600">🚫 Espulsi</label>
+                        <div class="bg-gray-700 px-4 py-3 rounded-lg">
+                            ${(currentPartita.espulsi_b || []).length > 0 ? 
+                                currentPartita.espulsi_b.map(e => `
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span>${e}</span>
+                                        <button onclick="rientroEspulso('b', '${e}')" class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-sm">
+                                            Rientro
+                                        </button>
+                                    </div>
+                                `).join('') 
+                                : '<span class="text-gray-400">Nessun espulso</span>'}
+                        </div>
+                    </div>
+
+                    <!-- MVP -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-cyan-400">⭐ MVP</label>
+                        <select id="mvpSelectB" onchange="aggiungiMVP('b')" class="w-full bg-gray-700 px-4 py-2 rounded-lg">
+                            <option value="">Seleziona MVP...</option>
+                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}" ${currentPartita.mvp_b === g.nome_giocatore ? 'selected' : ''}>${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <div class="mt-2 text-sm text-cyan-300">
+                            MVP attuale: ${currentPartita.mvp_b || 'Nessuno'}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Finalizza Partita -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                    <button onclick="finalizzaPartita()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-lg transition text-xl">
+                        ✓ Finalizza Partita
+                    </button>
+                </div>
+            `;
+            
+            // Inizializza timer display
+            updateTimerDisplay();
+            updateTimerButtons();
+        }
 
                 <!-- Squadra A -->
                 <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
