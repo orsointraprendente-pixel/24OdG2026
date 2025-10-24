@@ -50,9 +50,6 @@
                 <button onclick="showSection('partite')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
                     📋 Partite
                 </button>
-                <button onclick="showSection('referto')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
-                    ⚽ Referto
-                </button>
                 <button onclick="showSection('classifiche')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
                     🏆 Classifiche
                 </button>
@@ -112,20 +109,22 @@
                     </div>
                 </div>
                 
-                <div id="partiteList" class="space-y-4"></div>
+                <!-- Lista Partite (View) -->
+                <div id="partiteListView">
+                    <div id="partiteList" class="space-y-3"></div>
+                </div>
+
+                <!-- Referto Singola Partita (Hidden by default) -->
+                <div id="partitaRefertoView" class="hidden">
+                    <button onclick="tornaAllePartite()" class="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg mb-4 transition flex items-center gap-2">
+                        ← Torna alle Partite
+                    </button>
+                    <div id="refertoContent"></div>
+                </div>
             </div>
 
-            <!-- REFERTO SECTION -->
-            <div id="refertoSection" class="section hidden">
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <h2 class="text-2xl font-bold text-cyan-400 mb-4">⚽ Referto Partita</h2>
-                    <select id="selectPartitaReferto" onchange="loadReferto()" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-4">
-                        <option value="">Seleziona partita...</option>
-                    </select>
-                </div>
-                
-                <div id="refertoContent"></div>
-            </div>
+            <!-- CLASSIFICHE SECTION -->
+            <div id="classificheSection" class="section hidden">
 
             <!-- CLASSIFICHE SECTION -->
             <div id="classificheSection" class="section hidden">
@@ -263,8 +262,9 @@
             if (sectionName === 'classifiche') {
                 loadClassifiche();
             }
-            if (sectionName === 'referto') {
-                loadPartiteSelect();
+            if (sectionName === 'partite') {
+                // Torna alla vista lista quando si apre la sezione partite
+                tornaAllePartite();
             }
         }
 
@@ -407,35 +407,77 @@
             filtroOrarioEl.innerHTML = '<option value="">Tutti gli orari</option>' +
                 orari.map(o => `<option value="${o}" ${o == currentOrario ? 'selected' : ''}>${o}</option>`).join('');
 
-            // Mostra partite
+            // Mostra partite in LISTA COMPATTA
             const container = document.getElementById('partiteList');
             container.innerHTML = '';
 
+            if (data.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-8">Nessuna partita trovata</div>';
+                return;
+            }
+
             data.forEach(partita => {
                 const card = document.createElement('div');
-                card.className = `bg-gray-800 rounded-lg shadow-lg p-4 ${partita.completata ? 'opacity-60' : ''}`;
+                card.className = `bg-gray-800 rounded-lg shadow-lg p-4 cursor-pointer hover:bg-gray-700 transition ${partita.completata ? 'opacity-70' : ''}`;
+                card.onclick = () => apriReferto(partita.id);
+                
                 card.innerHTML = `
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-3">
                             <span class="bg-cyan-500 px-3 py-1 rounded-full text-sm font-bold">Campo ${partita.campo}</span>
-                            <span class="bg-gray-700 px-3 py-1 rounded-full text-sm ml-2">${partita.orario}</span>
+                            <span class="bg-gray-700 px-3 py-1 rounded-full text-sm">${partita.orario}</span>
+                            ${partita.completata ? '<span class="bg-green-500 px-2 py-1 rounded text-xs">✓</span>' : '<span class="bg-yellow-500 text-gray-900 px-2 py-1 rounded text-xs font-bold">DA GIOCARE</span>'}
                         </div>
-                        ${partita.completata ? '<span class="bg-green-500 px-3 py-1 rounded-full text-sm">✓ Completata</span>' : ''}
-                    </div>
-                    <div class="grid grid-cols-3 gap-4 items-center">
                         <div class="text-right">
-                            <div class="font-bold text-lg">${partita.squadra_a}</div>
-                            <div class="text-3xl font-bold text-cyan-400">${partita.punteggio_a}</div>
-                        </div>
-                        <div class="text-center text-gray-500 font-bold">VS</div>
-                        <div class="text-left">
-                            <div class="font-bold text-lg">${partita.squadra_b}</div>
-                            <div class="text-3xl font-bold text-cyan-400">${partita.punteggio_b}</div>
+                            <div class="text-sm font-bold">${partita.squadra_a} <span class="text-2xl text-cyan-400 mx-2">${partita.punteggio_a}</span> - <span class="text-2xl text-cyan-400 mx-2">${partita.punteggio_b}</span> ${partita.squadra_b}</div>
                         </div>
                     </div>
                 `;
                 container.appendChild(card);
             });
+        }
+
+        // Funzione per aprire il referto di una partita specifica
+        async function apriReferto(partitaId) {
+            currentPartitaId = partitaId;
+
+            const { data: partita } = await supabase
+                .from('partite')
+                .select('*')
+                .eq('id', partitaId)
+                .single();
+
+            currentPartita = partita;
+
+            const { data: squadraAData } = await supabase
+                .from('squadre')
+                .select('*')
+                .eq('nome_squadra', partita.squadra_a)
+                .order('numero');
+
+            const { data: squadraBData } = await supabase
+                .from('squadre')
+                .select('*')
+                .eq('nome_squadra', partita.squadra_b)
+                .order('numero');
+
+            giocatoriA = squadraAData || [];
+            giocatoriB = squadraBData || [];
+
+            // Nascondi lista partite, mostra referto
+            document.getElementById('partiteListView').classList.add('hidden');
+            document.getElementById('partitaRefertoView').classList.remove('hidden');
+
+            renderReferto();
+        }
+
+        // Funzione per tornare alla lista partite
+        function tornaAllePartite() {
+            document.getElementById('partiteListView').classList.remove('hidden');
+            document.getElementById('partitaRefertoView').classList.add('hidden');
+            currentPartitaId = null;
+            currentPartita = null;
+            loadPartite();
         }
 
         async function importPartite() {
@@ -507,52 +549,115 @@
         let giocatoriA = [];
         let giocatoriB = [];
 
-        async function loadPartiteSelect() {
-            const { data } = await supabase
-                .from('partite')
-                .select('*')
-                .eq('completata', false)
-                .order('campo')
-                .order('orario');
+        // Timer variables
+        let timerInterval = null;
+        let timerSeconds = 900; // 15 minuti = 900 secondi
+        let timerRunning = false;
+        let currentHalf = 1; // 1 o 2
 
-            const select = document.getElementById('selectPartitaReferto');
-            select.innerHTML = '<option value="">Seleziona partita...</option>' +
-                data.map(p => `<option value="${p.id}">Campo ${p.campo} - ${p.orario} - ${p.squadra_a} vs ${p.squadra_b}</option>`).join('');
+        async function reloadCurrentReferto() {
+            if (!currentPartitaId) return;
+            await apriReferto(currentPartitaId);
         }
 
-        async function loadReferto() {
-            const partitaId = document.getElementById('selectPartitaReferto').value;
-            if (!partitaId) {
-                document.getElementById('refertoContent').innerHTML = '';
-                return;
+        function startTimer() {
+            if (timerRunning) return;
+            timerRunning = true;
+            
+            timerInterval = setInterval(() => {
+                if (timerSeconds > 0) {
+                    timerSeconds--;
+                    updateTimerDisplay();
+                } else {
+                    // Tempo scaduto
+                    pauseTimer();
+                    playBeep();
+                    alert(`⏰ Fine ${currentHalf}° Tempo!`);
+                }
+            }, 1000);
+            
+            updateTimerButtons();
+        }
+
+        function pauseTimer() {
+            timerRunning = false;
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
             }
+            updateTimerButtons();
+        }
 
-            currentPartitaId = partitaId;
+        function resetTimer() {
+            pauseTimer();
+            timerSeconds = 900; // Reset a 15 minuti
+            updateTimerDisplay();
+        }
 
-            const { data: partita } = await supabase
-                .from('partite')
-                .select('*')
-                .eq('id', partitaId)
-                .single();
+        function switchHalf() {
+            if (!confirm('Passare al 2° tempo? Il timer sarà resettato.')) return;
+            currentHalf = 2;
+            resetTimer();
+            updateTimerDisplay();
+        }
 
-            currentPartita = partita;
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const timerEl = document.getElementById('timerDisplay');
+            if (timerEl) {
+                timerEl.textContent = display;
+                
+                // Cambio colore se < 1 minuto
+                if (timerSeconds < 60) {
+                    timerEl.classList.add('text-red-400');
+                    timerEl.classList.remove('text-cyan-400');
+                } else {
+                    timerEl.classList.add('text-cyan-400');
+                    timerEl.classList.remove('text-red-400');
+                }
+            }
+            
+            const halfEl = document.getElementById('currentHalf');
+            if (halfEl) {
+                halfEl.textContent = currentHalf === 1 ? '1° Tempo' : '2° Tempo';
+            }
+        }
 
-            const { data: squadraAData } = await supabase
-                .from('squadre')
-                .select('*')
-                .eq('nome_squadra', partita.squadra_a)
-                .order('numero');
+        function updateTimerButtons() {
+            const startBtn = document.getElementById('startTimerBtn');
+            const pauseBtn = document.getElementById('pauseTimerBtn');
+            
+            if (startBtn && pauseBtn) {
+                if (timerRunning) {
+                    startBtn.classList.add('hidden');
+                    pauseBtn.classList.remove('hidden');
+                } else {
+                    startBtn.classList.remove('hidden');
+                    pauseBtn.classList.add('hidden');
+                }
+            }
+        }
 
-            const { data: squadraBData } = await supabase
-                .from('squadre')
-                .select('*')
-                .eq('nome_squadra', partita.squadra_b)
-                .order('numero');
-
-            giocatoriA = squadraAData || [];
-            giocatoriB = squadraBData || [];
-
-            renderReferto();
+        function playBeep() {
+            // Beep sonoro semplice
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
         }
 
         function renderReferto() {
@@ -774,7 +879,7 @@
                 .eq('id', currentPartitaId);
 
             select.value = '';
-            await loadReferto();
+            await reloadCurrentReferto();
         }
 
         async function aggiungiScalpo(squadra) {
@@ -791,7 +896,7 @@
                 .eq('id', currentPartitaId);
 
             select.value = '';
-            await loadReferto();
+            await reloadCurrentReferto();
         }
 
         async function aggiungiVuoto(squadra) {
@@ -810,6 +915,103 @@
             let update = { [vuotiField]: vuoti };
             
             // Se 3° vuoto → espulsione automatica
+            if (countVuoti >= 3) {
+                const espulsi = [...(currentPartita[espulsiField] || [])];
+                if (!espulsi.includes(giocatore)) {
+                    espulsi.push(giocatore);
+                    update[espulsiField] = espulsi;
+                    alert(`⚠️ ${giocatore} ESPULSO per 3 vuoti!`);
+                }
+            }
+            
+            await supabase
+                .from('partite')
+                .update(update)
+                .eq('id', currentPartitaId);
+
+            select.value = '';
+            await reloadCurrentReferto();
+        }
+
+        async function rientroEspulso(squadra, giocatore) {
+            const field = squadra === 'a' ? 'espulsi_a' : 'espulsi_b';
+            const espulsi = (currentPartita[field] || []).filter(e => e !== giocatore);
+            
+            await supabase
+                .from('partite')
+                .update({ [field]: espulsi })
+                .eq('id', currentPartitaId);
+
+            await reloadCurrentReferto();
+        }
+
+        async function azzeraPrimoTempo() {
+            if (!confirm('Azzerare vuoti e far rientrare tutti gli espulsi?')) return;
+
+            await supabase
+                .from('partite')
+                .update({
+                    vuoti_a: [],
+                    vuoti_b: [],
+                    espulsi_a: [],
+                    espulsi_b: []
+                })
+                .eq('id', currentPartitaId);
+
+            alert('✓ Primo tempo azzerato! Tutti rientrati.');
+            await reloadCurrentReferto();
+        }
+
+        async function aggiungiMVP(squadra) {
+            const select = document.getElementById(`mvpSelect${squadra.toUpperCase()}`);
+            const giocatore = select.value;
+            
+            const field = squadra === 'a' ? 'mvp_a' : 'mvp_b';
+            
+            await supabase
+                .from('partite')
+                .update({ [field]: giocatore })
+                .eq('id', currentPartitaId);
+
+            await reloadCurrentReferto();
+        }
+
+        async function finalizzaPartita() {
+            if (!currentPartita.mvp_a || !currentPartita.mvp_b) {
+                alert('⚠️ Seleziona MVP per entrambe le squadre!');
+                return;
+            }
+
+            if (!confirm('Finalizzare la partita? Non sarà più modificabile.')) return;
+
+            const punteggioA = currentPartita.punteggio_a;
+            const punteggioB = currentPartita.punteggio_b;
+
+            let puntiA = 0, puntiB = 0;
+
+            if (punteggioA > punteggioB) {
+                puntiA = 3;
+                puntiB = 0;
+            } else if (punteggioB > punteggioA) {
+                puntiA = 0;
+                puntiB = 3;
+            } else {
+                puntiA = 1;
+                puntiB = 1;
+            }
+
+            await supabase
+                .from('partite')
+                .update({
+                    punti_a: puntiA,
+                    punti_b: puntiB,
+                    completata: true
+                })
+                .eq('id', currentPartitaId);
+
+            alert('✓ Partita finalizzata!');
+            tornaAllePartite();
+        }ione automatica
             if (countVuoti >= 3) {
                 const espulsi = [...(currentPartita[espulsiField] || [])];
                 if (!espulsi.includes(giocatore)) {
