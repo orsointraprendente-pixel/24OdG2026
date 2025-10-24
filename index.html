@@ -48,8 +48,11 @@
                 <button onclick="showSection('partite')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
                     📋 Partite
                 </button>
-                <button onclick="showSection('classifiche')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
-                    🏆 Classifiche
+                <button onclick="showSection('classifica')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
+                    🏆 Classifica
+                </button>
+                <button onclick="showSection('statistiche')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
+                    📊 Statistiche
                 </button>
             </div>
         </nav>
@@ -122,32 +125,34 @@
             </div>
 
             <!-- CLASSIFICHE SECTION -->
-            <div id="classificheSection" class="section hidden">
-                <div class="space-y-6">
-                    <!-- Classifica Generale -->
-                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                        <h2 class="text-2xl font-bold text-cyan-400 mb-4">🏆 Classifica Generale</h2>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead class="bg-gray-700">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left">#</th>
-                                        <th class="px-4 py-2 text-left">Squadra</th>
-                                        <th class="px-4 py-2 text-center">PT</th>
-                                        <th class="px-4 py-2 text-center">G</th>
-                                        <th class="px-4 py-2 text-center">V</th>
-                                        <th class="px-4 py-2 text-center">N</th>
-                                        <th class="px-4 py-2 text-center">P</th>
-                                        <th class="px-4 py-2 text-center">GF</th>
-                                        <th class="px-4 py-2 text-center">GS</th>
-                                        <th class="px-4 py-2 text-center">DR</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="classificaGenerale"></tbody>
-                            </table>
-                        </div>
+            <div id="classificaSection" class="section hidden">
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-bold text-cyan-400 mb-4">🏆 Classifica Generale</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-700">
+                                <tr>
+                                    <th class="px-4 py-2 text-left">#</th>
+                                    <th class="px-4 py-2 text-left">Squadra</th>
+                                    <th class="px-4 py-2 text-center">PT</th>
+                                    <th class="px-4 py-2 text-center">G</th>
+                                    <th class="px-4 py-2 text-center">V</th>
+                                    <th class="px-4 py-2 text-center">N</th>
+                                    <th class="px-4 py-2 text-center">P</th>
+                                    <th class="px-4 py-2 text-center">GF</th>
+                                    <th class="px-4 py-2 text-center">GS</th>
+                                    <th class="px-4 py-2 text-center">DR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="classificaGenerale"></tbody>
+                        </table>
                     </div>
+                </div>
+            </div>
 
+            <!-- STATISTICHE SECTION -->
+            <div id="statisticheSection" class="section hidden">
+                <div class="space-y-6">
                     <!-- Marcatori -->
                     <div class="bg-gray-800 rounded-lg shadow-lg p-6">
                         <h2 class="text-2xl font-bold text-yellow-400 mb-4">⚽ Top Marcatori</h2>
@@ -249,8 +254,11 @@
             });
             event.target.classList.add('bg-gray-700', 'text-cyan-400', 'border-b-2', 'border-cyan-400');
 
-            if (sectionName === 'classifiche') {
-                loadClassifiche();
+            if (sectionName === 'classifica') {
+                loadClassifica();
+            }
+            if (sectionName === 'statistiche') {
+                loadStatistiche();
             }
             if (sectionName === 'partite') {
                 tornaAllePartite();
@@ -988,8 +996,8 @@
             tornaAllePartite();
         }
 
-        // CLASSIFICHE
-        async function loadClassifiche() {
+        // CLASSIFICHE E STATISTICHE
+        async function loadClassifica() {
             const { data: partite } = await supabase
                 .from('partite')
                 .select('*')
@@ -1043,6 +1051,13 @@
                     <td class="px-4 py-3 text-center ${c.dr > 0 ? 'text-green-400' : c.dr < 0 ? 'text-red-400' : ''}">${c.dr > 0 ? '+' : ''}${c.dr}</td>
                 </tr>
             `).join('');
+        }
+
+        async function loadStatistiche() {
+            const { data: partite } = await supabase
+                .from('partite')
+                .select('*')
+                .eq('completata', true);
 
             const marcatori = {};
             partite.forEach(p => {
