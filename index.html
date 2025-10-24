@@ -220,25 +220,30 @@
             }
         }
 
-        function login() {
-            const email = document.getElementById('emailInput').value.trim().toLowerCase();
-            const errorEl = document.getElementById('loginError');
-            
-            if (!email) {
-                errorEl.textContent = 'Inserisci un\'email valida';
-                errorEl.classList.remove('hidden');
-                return;
-            }
+function login() {
+    const email = document.getElementById('emailInput').value.trim().toLowerCase();
+    const errorEl = document.getElementById('loginError');
+    
+    console.log('Email inserita:', email);  // ← AGGIUNGI QUESTO
+    console.log('Email autorizzate:', ARBITRI_AUTORIZZATI);  // ← E QUESTO
+    
+    if (!email) {
+        errorEl.textContent = 'Inserisci un\'email valida';
+        errorEl.classList.remove('hidden');
+        return;
+    }
 
-            if (ARBITRI_AUTORIZZATI.includes(email)) {
-                localStorage.setItem('userEmail', email);
-                errorEl.classList.add('hidden');
-                checkAuth();
-            } else {
-                errorEl.textContent = 'Email non autorizzata';
-                errorEl.classList.remove('hidden');
-            }
-        }
+    if (ARBITRI_AUTORIZZATI.includes(email)) {
+        console.log('✅ Email trovata!');  // ← E QUESTO
+        localStorage.setItem('userEmail', email);
+        errorEl.classList.add('hidden');
+        checkAuth();
+    } else {
+        console.log('❌ Email NON autorizzata');  // ← E QUESTO
+        errorEl.textContent = 'Email non autorizzata';
+        errorEl.classList.remove('hidden');
+    }
+}
 
         function logout() {
             if (confirm('Vuoi uscire?')) {
