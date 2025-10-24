@@ -610,4 +610,449 @@
                     <!-- Scalpi -->
                     <div class="mb-4">
                         <label class="block text-sm font-bold mb-2 text-red-400">🎯 Scalpi</label>
-                        <select id="scalpoSelectA" class="w-full bg-gray-700 px-4
+                        <select id="scalpoSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiScalpo('a')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition">
+                            Aggiungi Scalpo
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Scalpi: ${(currentPartita.scalpi_a || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Vuoti -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-orange-400">❌ Vuoti</label>
+                        <select id="vuotoSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiVuoto('a')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg transition">
+                            Aggiungi Vuoto
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Vuoti: ${(currentPartita.vuoti_a || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Espulsi -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-red-600">🚫 Espulsi</label>
+                        <div class="bg-gray-700 px-4 py-3 rounded-lg">
+                            ${(currentPartita.espulsi_a || []).length > 0 ? 
+                                currentPartita.espulsi_a.map(e => `
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span>${e}</span>
+                                        <button onclick="rientroEspulso('a', '${e}')" class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-sm">
+                                            Rientro
+                                        </button>
+                                    </div>
+                                `).join('') 
+                                : '<span class="text-gray-400">Nessun espulso</span>'}
+                        </div>
+                    </div>
+
+                    <!-- MVP -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-cyan-400">⭐ MVP</label>
+                        <select id="mvpSelectA" onchange="aggiungiMVP('a')" class="w-full bg-gray-700 px-4 py-2 rounded-lg">
+                            <option value="">Seleziona MVP...</option>
+                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}" ${currentPartita.mvp_a === g.nome_giocatore ? 'selected' : ''}>${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <div class="mt-2 text-sm text-cyan-300">
+                            MVP attuale: ${currentPartita.mvp_a || 'Nessuno'}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Squadra B -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-cyan-400 mb-4">${currentPartita.squadra_b}</h3>
+                    
+                    <!-- Gol -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-yellow-400">⚽ Gol</label>
+                        <select id="golSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiGol('b')" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 rounded-lg transition">
+                            Aggiungi Gol
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Marcatori: ${(currentPartita.gol_b || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Scalpi -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-red-400">🎯 Scalpi</label>
+                        <select id="scalpoSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiScalpo('b')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition">
+                            Aggiungi Scalpo
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Scalpi: ${(currentPartita.scalpi_b || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Vuoti -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-orange-400">❌ Vuoti</label>
+                        <select id="vuotoSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
+                            <option value="">Seleziona giocatore...</option>
+                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <button onclick="aggiungiVuoto('b')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg transition">
+                            Aggiungi Vuoto
+                        </button>
+                        <div class="mt-2 text-sm">
+                            Vuoti: ${(currentPartita.vuoti_b || []).join(', ') || 'Nessuno'}
+                        </div>
+                    </div>
+
+                    <!-- Espulsi -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-red-600">🚫 Espulsi</label>
+                        <div class="bg-gray-700 px-4 py-3 rounded-lg">
+                            ${(currentPartita.espulsi_b || []).length > 0 ? 
+                                currentPartita.espulsi_b.map(e => `
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span>${e}</span>
+                                        <button onclick="rientroEspulso('b', '${e}')" class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-sm">
+                                            Rientro
+                                        </button>
+                                    </div>
+                                `).join('') 
+                                : '<span class="text-gray-400">Nessun espulso</span>'}
+                        </div>
+                    </div>
+
+                    <!-- MVP -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2 text-cyan-400">⭐ MVP</label>
+                        <select id="mvpSelectB" onchange="aggiungiMVP('b')" class="w-full bg-gray-700 px-4 py-2 rounded-lg">
+                            <option value="">Seleziona MVP...</option>
+                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}" ${currentPartita.mvp_b === g.nome_giocatore ? 'selected' : ''}>${g.numero} - ${g.nome_giocatore}</option>`).join('')}
+                        </select>
+                        <div class="mt-2 text-sm text-cyan-300">
+                            MVP attuale: ${currentPartita.mvp_b || 'Nessuno'}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Finalizza Partita -->
+                <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                    <button onclick="finalizzaPartita()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-lg transition text-xl">
+                        ✓ Finalizza Partita
+                    </button>
+                </div>
+            `;
+        }
+
+        async function aggiungiGol(squadra) {
+            const select = document.getElementById(`golSelect${squadra.toUpperCase()}`);
+            const giocatore = select.value;
+            if (!giocatore) return;
+
+            const field = squadra === 'a' ? 'gol_a' : 'gol_b';
+            const scoreField = squadra === 'a' ? 'punteggio_a' : 'punteggio_b';
+            
+            const gol = [...(currentPartita[field] || []), giocatore];
+            
+            await supabase
+                .from('partite')
+                .update({ 
+                    [field]: gol,
+                    [scoreField]: gol.length
+                })
+                .eq('id', currentPartitaId);
+
+            select.value = '';
+            await loadReferto();
+        }
+
+        async function aggiungiScalpo(squadra) {
+            const select = document.getElementById(`scalpoSelect${squadra.toUpperCase()}`);
+            const giocatore = select.value;
+            if (!giocatore) return;
+
+            const field = squadra === 'a' ? 'scalpi_a' : 'scalpi_b';
+            const scalpi = [...(currentPartita[field] || []), giocatore];
+            
+            await supabase
+                .from('partite')
+                .update({ [field]: scalpi })
+                .eq('id', currentPartitaId);
+
+            select.value = '';
+            await loadReferto();
+        }
+
+        async function aggiungiVuoto(squadra) {
+            const select = document.getElementById(`vuotoSelect${squadra.toUpperCase()}`);
+            const giocatore = select.value;
+            if (!giocatore) return;
+
+            const vuotiField = squadra === 'a' ? 'vuoti_a' : 'vuoti_b';
+            const espulsiField = squadra === 'a' ? 'espulsi_a' : 'espulsi_b';
+            
+            const vuoti = [...(currentPartita[vuotiField] || []), giocatore];
+            
+            // Conta vuoti del giocatore
+            const countVuoti = vuoti.filter(v => v === giocatore).length;
+            
+            let update = { [vuotiField]: vuoti };
+            
+            // Se 3° vuoto → espulsione automatica
+            if (countVuoti >= 3) {
+                const espulsi = [...(currentPartita[espulsiField] || [])];
+                if (!espulsi.includes(giocatore)) {
+                    espulsi.push(giocatore);
+                    update[espulsiField] = espulsi;
+                    alert(`⚠️ ${giocatore} ESPULSO per 3 vuoti!`);
+                }
+            }
+            
+            await supabase
+                .from('partite')
+                .update(update)
+                .eq('id', currentPartitaId);
+
+            select.value = '';
+            await loadReferto();
+        }
+
+        async function rientroEspulso(squadra, giocatore) {
+            const field = squadra === 'a' ? 'espulsi_a' : 'espulsi_b';
+            const espulsi = (currentPartita[field] || []).filter(e => e !== giocatore);
+            
+            await supabase
+                .from('partite')
+                .update({ [field]: espulsi })
+                .eq('id', currentPartitaId);
+
+            await loadReferto();
+        }
+
+        async function azzeraPrimoTempo() {
+            if (!confirm('Azzerare vuoti e far rientrare tutti gli espulsi?')) return;
+
+            await supabase
+                .from('partite')
+                .update({
+                    vuoti_a: [],
+                    vuoti_b: [],
+                    espulsi_a: [],
+                    espulsi_b: []
+                })
+                .eq('id', currentPartitaId);
+
+            alert('✓ Primo tempo azzerato! Tutti rientrati.');
+            await loadReferto();
+        }
+
+        async function aggiungiMVP(squadra) {
+            const select = document.getElementById(`mvpSelect${squadra.toUpperCase()}`);
+            const giocatore = select.value;
+            
+            const field = squadra === 'a' ? 'mvp_a' : 'mvp_b';
+            
+            await supabase
+                .from('partite')
+                .update({ [field]: giocatore })
+                .eq('id', currentPartitaId);
+
+            await loadReferto();
+        }
+
+        async function finalizzaPartita() {
+            if (!currentPartita.mvp_a || !currentPartita.mvp_b) {
+                alert('⚠️ Seleziona MVP per entrambe le squadre!');
+                return;
+            }
+
+            if (!confirm('Finalizzare la partita? Non sarà più modificabile.')) return;
+
+            const punteggioA = currentPartita.punteggio_a;
+            const punteggioB = currentPartita.punteggio_b;
+
+            let puntiA = 0, puntiB = 0;
+
+            if (punteggioA > punteggioB) {
+                puntiA = 3;
+                puntiB = 0;
+            } else if (punteggioB > punteggioA) {
+                puntiA = 0;
+                puntiB = 3;
+            } else {
+                puntiA = 1;
+                puntiB = 1;
+            }
+
+            await supabase
+                .from('partite')
+                .update({
+                    punti_a: puntiA,
+                    punti_b: puntiB,
+                    completata: true
+                })
+                .eq('id', currentPartitaId);
+
+            alert('✓ Partita finalizzata!');
+            document.getElementById('selectPartitaReferto').value = '';
+            document.getElementById('refertoContent').innerHTML = '';
+            loadPartiteSelect();
+            loadPartite();
+        }
+
+        // ============================================
+        // CLASSIFICHE
+        // ============================================
+        async function loadClassifiche() {
+            const { data: partite } = await supabase
+                .from('partite')
+                .select('*')
+                .eq('completata', true);
+
+            // Classifica Generale
+            const classifica = {};
+            partite.forEach(p => {
+                if (!classifica[p.squadra_a]) {
+                    classifica[p.squadra_a] = { g: 0, v: 0, n: 0, p: 0, gf: 0, gs: 0, pt: 0 };
+                }
+                if (!classifica[p.squadra_b]) {
+                    classifica[p.squadra_b] = { g: 0, v: 0, n: 0, p: 0, gf: 0, gs: 0, pt: 0 };
+                }
+
+                classifica[p.squadra_a].g++;
+                classifica[p.squadra_b].g++;
+                classifica[p.squadra_a].gf += p.punteggio_a;
+                classifica[p.squadra_a].gs += p.punteggio_b;
+                classifica[p.squadra_b].gf += p.punteggio_b;
+                classifica[p.squadra_b].gs += p.punteggio_a;
+                classifica[p.squadra_a].pt += p.punti_a;
+                classifica[p.squadra_b].pt += p.punti_b;
+
+                if (p.punti_a === 3) classifica[p.squadra_a].v++;
+                else if (p.punti_a === 1) classifica[p.squadra_a].n++;
+                else classifica[p.squadra_a].p++;
+
+                if (p.punti_b === 3) classifica[p.squadra_b].v++;
+                else if (p.punti_b === 1) classifica[p.squadra_b].n++;
+                else classifica[p.squadra_b].p++;
+            });
+
+            const classificaArray = Object.keys(classifica).map(team => ({
+                team,
+                ...classifica[team],
+                dr: classifica[team].gf - classifica[team].gs
+            })).sort((a, b) => b.pt - a.pt || b.dr - a.dr);
+
+            const tbody = document.getElementById('classificaGenerale');
+            tbody.innerHTML = classificaArray.map((c, i) => `
+                <tr class="border-b border-gray-700 hover:bg-gray-700">
+                    <td class="px-4 py-3 font-bold">${i + 1}</td>
+                    <td class="px-4 py-3">${c.team}</td>
+                    <td class="px-4 py-3 text-center font-bold text-cyan-400">${c.pt}</td>
+                    <td class="px-4 py-3 text-center">${c.g}</td>
+                    <td class="px-4 py-3 text-center text-green-400">${c.v}</td>
+                    <td class="px-4 py-3 text-center text-yellow-400">${c.n}</td>
+                    <td class="px-4 py-3 text-center text-red-400">${c.p}</td>
+                    <td class="px-4 py-3 text-center">${c.gf}</td>
+                    <td class="px-4 py-3 text-center">${c.gs}</td>
+                    <td class="px-4 py-3 text-center ${c.dr > 0 ? 'text-green-400' : c.dr < 0 ? 'text-red-400' : ''}">${c.dr > 0 ? '+' : ''}${c.dr}</td>
+                </tr>
+            `).join('');
+
+            // Top Marcatori
+            const marcatori = {};
+            partite.forEach(p => {
+                (p.gol_a || []).forEach(g => marcatori[g] = (marcatori[g] || 0) + 1);
+                (p.gol_b || []).forEach(g => marcatori[g] = (marcatori[g] || 0) + 1);
+            });
+            const topMarcatori = Object.keys(marcatori)
+                .map(g => ({ name: g, gol: marcatori[g] }))
+                .sort((a, b) => b.gol - a.gol)
+                .slice(0, 10);
+
+            document.getElementById('topMarcatori').innerHTML = topMarcatori.map((m, i) => `
+                <div class="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
+                    <span><span class="font-bold text-yellow-400">${i + 1}.</span> ${m.name}</span>
+                    <span class="bg-yellow-400 text-gray-900 px-3 py-1 rounded font-bold">${m.gol} ⚽</span>
+                </div>
+            `).join('');
+
+            // Top Scalpiatori
+            const scalpiatori = {};
+            partite.forEach(p => {
+                (p.scalpi_a || []).forEach(s => scalpiatori[s] = (scalpiatori[s] || 0) + 1);
+                (p.scalpi_b || []).forEach(s => scalpiatori[s] = (scalpiatori[s] || 0) + 1);
+            });
+            const topScalpiatori = Object.keys(scalpiatori)
+                .map(s => ({ name: s, scalpi: scalpiatori[s] }))
+                .sort((a, b) => b.scalpi - a.scalpi)
+                .slice(0, 10);
+
+            document.getElementById('topScalpiatori').innerHTML = topScalpiatori.map((s, i) => `
+                <div class="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
+                    <span><span class="font-bold text-red-400">${i + 1}.</span> ${s.name}</span>
+                    <span class="bg-red-400 text-white px-3 py-1 rounded font-bold">${s.scalpi} 🎯</span>
+                </div>
+            `).join('');
+
+            // Top Vuotatori
+            const vuotatori = {};
+            partite.forEach(p => {
+                (p.vuoti_a || []).forEach(v => vuotatori[v] = (vuotatori[v] || 0) + 1);
+                (p.vuoti_b || []).forEach(v => vuotatori[v] = (vuotatori[v] || 0) + 1);
+            });
+            const topVuotatori = Object.keys(vuotatori)
+                .map(v => ({ name: v, vuoti: vuotatori[v] }))
+                .sort((a, b) => b.vuoti - a.vuoti)
+                .slice(0, 10);
+
+            document.getElementById('topVuotatori').innerHTML = topVuotatori.map((v, i) => `
+                <div class="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
+                    <span><span class="font-bold text-orange-400">${i + 1}.</span> ${v.name}</span>
+                    <span class="bg-orange-400 text-white px-3 py-1 rounded font-bold">${v.vuoti} ❌</span>
+                </div>
+            `).join('');
+
+            // Top MVP
+            const mvps = {};
+            partite.forEach(p => {
+                if (p.mvp_a) mvps[p.mvp_a] = (mvps[p.mvp_a] || 0) + 1;
+                if (p.mvp_b) mvps[p.mvp_b] = (mvps[p.mvp_b] || 0) + 1;
+            });
+            const topMVPs = Object.keys(mvps)
+                .map(m => ({ name: m, count: mvps[m] }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 10);
+
+            document.getElementById('topMVP').innerHTML = topMVPs.map((m, i) => `
+                <div class="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
+                    <span><span class="font-bold text-cyan-400">${i + 1}.</span> ${m.name}</span>
+                    <span class="bg-cyan-400 text-gray-900 px-3 py-1 rounded font-bold">${m.count} ⭐</span>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            
+            document.getElementById('emailInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+        });
+    </script>
+</body>
+</html>
