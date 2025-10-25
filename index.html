@@ -17,7 +17,7 @@
             <p class="text-gray-300 mb-6 text-center">Accedi con email autorizzata</p>
             <input type="email" id="emailInput" placeholder="email@arbitro.it" 
                    class="w-full bg-gray-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-400">
-            <button onclick="login()" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-lg transition">
+            <button onclick="login()" id="btnLogin" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-lg transition">
                 Accedi
             </button>
             <p id="loginError" class="text-red-400 text-sm mt-4 text-center hidden"></p>
@@ -32,7 +32,7 @@
                 <h1 class="text-2xl font-bold text-cyan-400">⚽ 24OdG</h1>
                 <div class="flex items-center gap-4">
                     <span id="userEmailDisplay" class="text-gray-300 text-sm"></span>
-                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm transition">
+                    <button onclick="logout()" id="btnLogout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm transition">
                         Logout
                     </button>
                 </div>
@@ -67,10 +67,10 @@
                     <div class="flex flex-wrap gap-3 mb-4">
                         <input type="text" id="sheetUrlSquadre" placeholder="URL Google Sheets" 
                                class="flex-1 min-w-[200px] bg-gray-700 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">
-                        <button onclick="importSquadre()" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition">
+                        <button id="btnImportSquadre" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition">
                             📥 Import Squadre
                         </button>
-                        <button onclick="aggiungiSquadraManuale()" class="bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-lg transition">
+                        <button id="btnAggiungiSquadra" class="bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-lg transition">
                             ➕ Aggiungi Manuale
                         </button>
                     </div>
@@ -86,10 +86,10 @@
                     <div class="flex flex-wrap gap-3 mb-4">
                         <input type="text" id="sheetUrlPartite" placeholder="URL Google Sheets" 
                                class="flex-1 min-w-[200px] bg-gray-700 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">
-                        <button onclick="importPartite()" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition">
+                        <button id="btnImportPartite" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition">
                             📥 Import Partite
                         </button>
-                        <button onclick="aggiungiPartitaManuale()" class="bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-lg transition">
+                        <button id="btnAggiungiPartita" class="bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-lg transition">
                             ➕ Aggiungi Manuale
                         </button>
                     </div>
@@ -185,8 +185,7 @@
     <script>
         // CONFIGURAZIONE SUPABASE - MODIFICA QUI!
         const SUPABASE_URL = 'https://jvpbpitwdosgtxdkfwqe.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2cGJwaXR3ZG9zZ3R4ZGtmd3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyODg0ODEsImV4cCI6MjA3Njg2NDQ4MX0.UksYZ5XF86lxTiVoL9mMU9pubOFbpOE-OdwkBzpF-V8';
-        
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2cGJwaXR3ZG9zZ3R4ZGtmd3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyODg0ODEsImV4cCI6MjA3Njg2NDQ4MX0.UksYZ5XF86lxTiVoL9mMU9pubOFbpOE-OdwkBzpF-V8'; 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // WHITELIST EMAIL - AGGIUNGI LA TUA EMAIL QUI!
@@ -252,7 +251,12 @@
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('bg-gray-700', 'text-cyan-400', 'border-b-2', 'border-cyan-400');
             });
-            event.target.classList.add('bg-gray-700', 'text-cyan-400', 'border-b-2', 'border-cyan-400');
+            
+            // Fix: usa window.event se event non è definito
+            const clickedBtn = event?.target || window.event?.target;
+            if (clickedBtn) {
+                clickedBtn.classList.add('bg-gray-700', 'text-cyan-400', 'border-b-2', 'border-cyan-400');
+            }
 
             if (sectionName === 'classifica') {
                 loadClassifica();
@@ -1132,9 +1136,37 @@
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             
+            // Event listeners per login
             document.getElementById('emailInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') login();
             });
+            
+            // Event listeners per bottoni (dopo che l'app è caricata)
+            setTimeout(() => {
+                // Bottoni squadre
+                const btnImportSquadre = document.getElementById('btnImportSquadre');
+                const btnAggiungiSquadra = document.getElementById('btnAggiungiSquadra');
+                
+                if (btnImportSquadre) {
+                    btnImportSquadre.addEventListener('click', importSquadre);
+                }
+                if (btnAggiungiSquadra) {
+                    btnAggiungiSquadra.addEventListener('click', aggiungiSquadraManuale);
+                }
+                
+                // Bottoni partite
+                const btnImportPartite = document.getElementById('btnImportPartite');
+                const btnAggiungiPartita = document.getElementById('btnAggiungiPartita');
+                
+                if (btnImportPartite) {
+                    btnImportPartite.addEventListener('click', importPartite);
+                }
+                if (btnAggiungiPartita) {
+                    btnAggiungiPartita.addEventListener('click', aggiungiPartitaManuale);
+                }
+                
+                console.log('✅ Event listeners configurati');
+            }, 1000);
         });
     </script>
 </body>
