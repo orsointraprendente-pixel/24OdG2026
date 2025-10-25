@@ -3,1292 +3,1102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>24OdG - Torneo Pallascout</title>
+    <meta name="theme-color" content="#0e7490">
+    <title>24OdG - Torneo Arbitri</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div id="app"></div>
     
-    <!-- Login Screen -->
-    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full">
-            <h1 class="text-3xl font-bold text-cyan-400 mb-6 text-center">⚽ 24 Ore delle Grazie</h1>
-            <p class="text-gray-300 mb-6 text-center">Accedi con email autorizzata</p>
-            <input type="email" id="emailInput" placeholder="email@arbitro.it" 
-                   class="w-full bg-gray-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-400">
-            <button onclick="login()" id="btnLogin" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-lg transition">
-                Accedi
-            </button>
-            <p id="loginError" class="text-red-400 text-sm mt-4 text-center hidden"></p>
-        </div>
-    </div>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm';
 
-    <!-- Main App -->
-    <div id="mainApp" class="hidden">
-        <!-- Header -->
-        <header class="bg-gray-800 shadow-lg sticky top-0 z-50">
-            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-cyan-400">⚽ 24OdG</h1>
-                <div class="flex items-center gap-4">
-                    <span id="userEmailDisplay" class="text-gray-300 text-sm"></span>
-                    <button onclick="logout()" id="btnLogout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm transition">
-                        Logout
-                    </button>
-                </div>
-            </div>
-        </header>
+        const SUPABASE_URL = 'https://ouvlmrfkouacqazitmwd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91dmxtcmZrb3VhY3Fheml0bXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzOTcxNDcsImV4cCI6MjA3Njk3MzE0N30.1Yb01L3s17e9XvnOJCPtRNjLhshKnb5LSOdGz3omloA';
 
-        <!-- Navigation -->
-        <nav class="bg-gray-800 border-t border-gray-700">
-            <div class="container mx-auto px-4 flex overflow-x-auto">
-                <button onclick="showSection('squadre')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
-                    👥 Squadre
-                </button>
-                <button onclick="showSection('partite')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
-                    📋 Partite
-                </button>
-                <button onclick="showSection('classifica')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
-                    🏆 Classifica
-                </button>
-                <button onclick="showSection('statistiche')" class="nav-btn px-6 py-3 whitespace-nowrap hover:bg-gray-700 transition">
-                    📊 Statistiche
-                </button>
-            </div>
-        </nav>
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        window.supabase = supabase;
 
-        <!-- Sections Container -->
-        <div class="container mx-auto px-4 py-6">
-            
-            <!-- SQUADRE SECTION -->
-            <div id="squadreSection" class="section">
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <h2 class="text-2xl font-bold text-cyan-400 mb-4">👥 Gestione Squadre</h2>
-                    <div class="flex flex-wrap gap-3 mb-4">
-                        <input type="text" id="sheetUrlSquadre" placeholder="URL Google Sheets" 
-                               class="flex-1 min-w-[200px] bg-gray-700 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">
-                        <button id="btnImportSquadre" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition">
-                            📥 Import Squadre
-                        </button>
-                        <button id="btnAggiungiSquadra" class="bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-lg transition">
-                            ➕ Aggiungi Manuale
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="squadreList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-            </div>
+        window.app = {
+            partite: [],
+            squadre: {},
+            connesso: false,
+            vista: 'partite',
+            sottovista: 'tutte',
+            partitaSelezionata: null,
+            tempo: 1,
+            secondi: 0,
+            timerAttivo: false,
+            timerInterval: null,
+            filtroCampo: 'tutti',
+            filtroOrario: 'tutti',
 
-            <!-- PARTITE SECTION -->
-            <div id="partiteSection" class="section hidden">
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <h2 class="text-2xl font-bold text-cyan-400 mb-4">📋 Gestione Partite</h2>
-                    <div class="flex flex-wrap gap-3 mb-4">
-                        <input type="text" id="sheetUrlPartite" placeholder="URL Google Sheets" 
-                               class="flex-1 min-w-[200px] bg-gray-700 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">
-                        <button id="btnImportPartite" class="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-lg transition">
-                            📥 Import Partite
-                        </button>
-                        <button id="btnAggiungiPartita" class="bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-lg transition">
-                            ➕ Aggiungi Manuale
-                        </button>
-                    </div>
+            async init() {
+                await this.caricaSquadre();
+                await this.caricaPartite();
+                this.sottoscrivi();
+                this.render();
+            },
 
-                    <!-- Filtri Partite -->
-                    <div class="flex flex-wrap gap-3 mb-4">
-                        <select id="filtroCampo" onchange="loadPartite()" class="bg-gray-700 px-4 py-2 rounded-lg">
-                            <option value="">Tutti i campi</option>
-                        </select>
-                        <select id="filtroOrario" onchange="loadPartite()" class="bg-gray-700 px-4 py-2 rounded-lg">
-                            <option value="">Tutti gli orari</option>
-                        </select>
-                        <select id="filtroStato" onchange="loadPartite()" class="bg-gray-700 px-4 py-2 rounded-lg">
-                            <option value="tutte">Tutte</option>
-                            <option value="daGiocare">Da Giocare</option>
-                            <option value="completate">Completate</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- Lista Partite (View) -->
-                <div id="partiteListView">
-                    <div id="partiteList" class="space-y-3"></div>
-                </div>
-
-                <!-- Referto Singola Partita (Hidden by default) -->
-                <div id="partitaRefertoView" class="hidden">
-                    <button onclick="tornaAllePartite()" class="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg mb-4 transition flex items-center gap-2">
-                        ← Torna alle Partite
-                    </button>
-                    <div id="refertoContent"></div>
-                </div>
-            </div>
-
-            <!-- CLASSIFICHE SECTION -->
-            <div id="classificaSection" class="section hidden">
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                    <h2 class="text-2xl font-bold text-cyan-400 mb-4">🏆 Classifica Generale</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <thead class="bg-gray-700">
-                                <tr>
-                                    <th class="px-4 py-2 text-left">#</th>
-                                    <th class="px-4 py-2 text-left">Squadra</th>
-                                    <th class="px-4 py-2 text-center">PT</th>
-                                    <th class="px-4 py-2 text-center">G</th>
-                                    <th class="px-4 py-2 text-center">V</th>
-                                    <th class="px-4 py-2 text-center">N</th>
-                                    <th class="px-4 py-2 text-center">P</th>
-                                    <th class="px-4 py-2 text-center">GF</th>
-                                    <th class="px-4 py-2 text-center">GS</th>
-                                    <th class="px-4 py-2 text-center">DR</th>
-                                </tr>
-                            </thead>
-                            <tbody id="classificaGenerale"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- STATISTICHE SECTION -->
-            <div id="statisticheSection" class="section hidden">
-                <div class="space-y-6">
-                    <!-- Marcatori -->
-                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                        <h2 class="text-2xl font-bold text-yellow-400 mb-4">⚽ Top Marcatori</h2>
-                        <div id="topMarcatori" class="space-y-2"></div>
-                    </div>
-
-                    <!-- Scalpiatori -->
-                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                        <h2 class="text-2xl font-bold text-red-400 mb-4">🎯 Top Scalpiatori</h2>
-                        <div id="topScalpiatori" class="space-y-2"></div>
-                    </div>
-
-                    <!-- Vuotatori -->
-                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                        <h2 class="text-2xl font-bold text-orange-400 mb-4">❌ Top Vuotatori</h2>
-                        <div id="topVuotatori" class="space-y-2"></div>
-                    </div>
-
-                    <!-- MVP -->
-                    <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                        <h2 class="text-2xl font-bold text-cyan-400 mb-4">⭐ Top MVP</h2>
-                        <div id="topMVP" class="space-y-2"></div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <script>
-        // CONFIGURAZIONE SUPABASE - MODIFICA QUI!
-        const SUPABASE_URL = 'https://jvpbpitwdosgtxdkfwqe.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2cGJwaXR3ZG9zZ3R4ZGtmd3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyODg0ODEsImV4cCI6MjA3Njg2NDQ4MX0.UksYZ5XF86lxTiVoL9mMU9pubOFbpOE-OdwkBzpF-V8';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // WHITELIST EMAIL - AGGIUNGI LA TUA EMAIL QUI!
-        const ARBITRI_AUTORIZZATI = [
-            'stepengo@gmail.com',
-            'test@24odg.test'
-        ];
-
-        // AUTENTICAZIONE
-        function checkAuth() {
-            const userEmail = localStorage.getItem('userEmail');
-            if (userEmail && ARBITRI_AUTORIZZATI.includes(userEmail)) {
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
-                document.getElementById('userEmailDisplay').textContent = userEmail;
-                loadSquadre();
-                loadPartite();
-                showSection('squadre');
-            } else {
-                localStorage.removeItem('userEmail');
-                document.getElementById('loginScreen').classList.remove('hidden');
-                document.getElementById('mainApp').classList.add('hidden');
-            }
-        }
-
-        function login() {
-            const email = document.getElementById('emailInput').value.trim().toLowerCase();
-            const errorEl = document.getElementById('loginError');
-            
-            console.log('Tentativo login con:', email);
-            console.log('Email autorizzate:', ARBITRI_AUTORIZZATI);
-            
-            if (!email) {
-                errorEl.textContent = 'Inserisci un\'email valida';
-                errorEl.classList.remove('hidden');
-                return;
-            }
-
-            if (ARBITRI_AUTORIZZATI.includes(email)) {
-                console.log('✅ Login riuscito!');
-                localStorage.setItem('userEmail', email);
-                errorEl.classList.add('hidden');
-                checkAuth();
-            } else {
-                console.log('❌ Email non autorizzata');
-                errorEl.textContent = 'Email non autorizzata';
-                errorEl.classList.remove('hidden');
-            }
-        }
-
-        function logout() {
-            if (confirm('Vuoi uscire?')) {
-                localStorage.removeItem('userEmail');
-                checkAuth();
-            }
-        }
-
-        // NAVIGATION
-        function showSection(sectionName) {
-            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-            document.getElementById(sectionName + 'Section').classList.remove('hidden');
-            
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('bg-gray-700', 'text-cyan-400', 'border-b-2', 'border-cyan-400');
-            });
-            
-            // Fix: usa window.event se event non è definito
-            const clickedBtn = event?.target || window.event?.target;
-            if (clickedBtn) {
-                clickedBtn.classList.add('bg-gray-700', 'text-cyan-400', 'border-b-2', 'border-cyan-400');
-            }
-
-            if (sectionName === 'classifica') {
-                loadClassifica();
-            }
-            if (sectionName === 'statistiche') {
-                loadStatistiche();
-            }
-            if (sectionName === 'partite') {
-                tornaAllePartite();
-            }
-        }
-
-        // GESTIONE SQUADRE
-        async function loadSquadre() {
-            const { data, error } = await supabase
-                .from('squadre')
-                .select('*')
-                .order('nome_squadra', { ascending: true })
-                .order('numero', { ascending: true });
-
-            if (error) {
-                console.error('Errore caricamento squadre:', error);
-                return;
-            }
-
-            const squadreByTeam = {};
-            data.forEach(row => {
-                if (!squadreByTeam[row.nome_squadra]) {
-                    squadreByTeam[row.nome_squadra] = [];
+            async caricaSquadre() {
+                try {
+                    const { data, error } = await supabase.from('squadre').select('*');
+                    if (error) throw error;
+                    
+                    this.squadre = {};
+                    data.forEach(row => {
+                        if (!this.squadre[row.nome_squadra]) {
+                            this.squadre[row.nome_squadra] = [];
+                        }
+                        this.squadre[row.nome_squadra].push({
+                            numero: row.numero,
+                            nome: row.nome_giocatore
+                        });
+                    });
+                } catch (error) {
+                    console.error('✗ Errore caricamento squadre:', error);
                 }
-                squadreByTeam[row.nome_squadra].push(row);
-            });
+            },
 
-            const container = document.getElementById('squadreList');
-            container.innerHTML = '';
+            async salvaSquadre() {
+                try {
+                    await supabase.from('squadre').delete().neq('id', 0);
+                    const rows = [];
+                    Object.keys(this.squadre).forEach(nomeSquadra => {
+                        this.squadre[nomeSquadra].forEach(g => {
+                            rows.push({
+                                nome_squadra: nomeSquadra,
+                                numero: g.numero,
+                                nome_giocatore: g.nome
+                            });
+                        });
+                    });
+                    if (rows.length > 0) {
+                        await supabase.from('squadre').insert(rows);
+                    }
+                } catch (error) {
+                    console.error('✗ Errore salvataggio squadre:', error);
+                }
+            },
 
-            Object.keys(squadreByTeam).forEach(teamName => {
-                const players = squadreByTeam[teamName];
-                const card = document.createElement('div');
-                card.className = 'bg-gray-800 rounded-lg shadow-lg p-4';
-                card.innerHTML = `
-                    <h3 class="text-xl font-bold text-cyan-400 mb-3">${teamName}</h3>
-                    <div class="space-y-2">
-                        ${players.map(p => `
-                            <div class="flex items-center gap-2 bg-gray-700 px-3 py-2 rounded">
-                                <span class="bg-cyan-500 text-white font-bold px-2 py-1 rounded text-sm">${p.numero}</span>
-                                <span>${p.nome_giocatore}</span>
+            async caricaPartite() {
+                try {
+                    const { data, error } = await supabase.from('partite').select('*')
+                        .order('orario', { ascending: true })
+                        .order('campo', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    this.partite = data.map(row => ({
+                        id: row.id,
+                        campo: row.campo || 1,
+                        orario: row.orario || '',
+                        squadraA: row.squadra_a,
+                        squadraB: row.squadra_b,
+                        golA: row.gol_a || [],
+                        golB: row.gol_b || [],
+                        scalpiA: row.scalpi_a || [],
+                        scalpiB: row.scalpi_b || [],
+                        vuotiA: row.vuoti_a || [],
+                        vuotiB: row.vuoti_b || [],
+                        espulsiA: row.espulsi_a || [],
+                        espulsiB: row.espulsi_b || [],
+                        punteggioA: row.punteggio_a || 0,
+                        punteggioB: row.punteggio_b || 0,
+                        puntiA: row.punti_a || 0,
+                        puntiB: row.punti_b || 0,
+                        mvpA: row.mvp_a || '',
+                        mvpB: row.mvp_b || '',
+                        completata: row.completata || false
+                    }));
+                    
+                    this.connesso = true;
+                } catch (error) {
+                    console.error('✗ Errore caricamento partite:', error);
+                    this.connesso = false;
+                }
+            },
+
+            sottoscrivi() {
+                supabase.channel('db-changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'partite' }, 
+                        async () => {
+                            await this.caricaPartite();
+                            this.render();
+                        }
+                    )
+                    .subscribe();
+            },
+
+            async aggiungiPartita(campo, orario, squadraA, squadraB) {
+                try {
+                    const { error } = await supabase.from('partite').insert([{
+                        campo, orario,
+                        squadra_a: squadraA, squadra_b: squadraB,
+                        gol_a: [], gol_b: [], scalpi_a: [], scalpi_b: [],
+                        vuoti_a: [], vuoti_b: [], espulsi_a: [], espulsi_b: [],
+                        punteggio_a: 0, punteggio_b: 0,
+                        punti_a: 0, punti_b: 0, mvp_a: '', mvp_b: '',
+                        completata: false
+                    }]);
+                    if (error) throw error;
+                } catch (error) {
+                    alert('Errore aggiunta partita: ' + error.message);
+                }
+            },
+
+            async aggiornaPartita(id, updates) {
+                try {
+                    const p = this.partite.find(x => x.id === id);
+                    const u = { ...p, ...updates };
+                    
+                    const { error } = await supabase.from('partite').update({
+                        squadra_a: u.squadraA, squadra_b: u.squadraB,
+                        gol_a: u.golA, gol_b: u.golB,
+                        scalpi_a: u.scalpiA, scalpi_b: u.scalpiB,
+                        vuoti_a: u.vuotiA, vuoti_b: u.vuotiB,
+                        espulsi_a: u.espulsiA, espulsi_b: u.espulsiB,
+                        punteggio_a: u.punteggioA, punteggio_b: u.punteggioB,
+                        punti_a: u.puntiA, punti_b: u.puntiB,
+                        mvp_a: u.mvpA, mvp_b: u.mvpB,
+                        completata: u.completata
+                    }).eq('id', id);
+                    
+                    if (error) throw error;
+                    
+                    const idx = this.partite.findIndex(x => x.id === id);
+                    if (idx !== -1) {
+                        this.partite[idx] = u;
+                    }
+                    
+                    this.render();
+                } catch (error) {
+                    console.error('✗ Errore aggiornamento partita:', error);
+                }
+            },
+
+            async eliminaPartita(id) {
+                if (!confirm('Eliminare questa partita?')) return;
+                try {
+                    const { error } = await supabase.from('partite').delete().eq('id', id);
+                    if (error) throw error;
+                } catch (error) {
+                    console.error('✗ Errore eliminazione partita:', error);
+                }
+            },
+
+            formatoTempo(secondi) {
+                const min = Math.floor(secondi / 60);
+                const sec = secondi % 60;
+                return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            },
+
+            avviaTimer(id) {
+                this.partitaSelezionata = id;
+                this.timerAttivo = true;
+                this.tempo = 1;
+                this.secondi = 0;
+
+                if (this.timerInterval) clearInterval(this.timerInterval);
+
+                this.timerInterval = setInterval(() => {
+                    this.secondi++;
+                    if (this.secondi === 900) {
+                        if (this.tempo === 1) {
+                            alert('⏱️ FINE 1° TEMPO!');
+                            this.tempo = 2;
+                            this.secondi = 0;
+                        } else {
+                            alert('🏁 FINE PARTITA!');
+                            this.fermaTimer();
+                        }
+                    }
+                    this.render();
+                }, 1000);
+
+                this.render();
+            },
+
+            fermaTimer() {
+                this.timerAttivo = false;
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+                this.render();
+            },
+
+            aggiungiSquadraManuale() {
+                const nome = prompt('Nome della squadra:');
+                if (!nome) return;
+                
+                const giocatori = [];
+                let continua = true;
+                
+                while (continua) {
+                    const numero = prompt(`Squadra: ${nome}\nNumero maglia (lascia vuoto per terminare):`);
+                    if (!numero) break;
+                    
+                    const nomeGiocatore = prompt(`Squadra: ${nome}\nNome del giocatore n. ${numero}:`);
+                    if (!nomeGiocatore) break;
+                    
+                    giocatori.push({ numero: parseInt(numero), nome: nomeGiocatore });
+                    continua = confirm('Aggiungere un altro giocatore?');
+                }
+                
+                if (giocatori.length > 0) {
+                    this.squadre[nome] = giocatori;
+                    this.salvaSquadre();
+                    alert(`✓ Squadra "${nome}" aggiunta con ${giocatori.length} giocatori!`);
+                    this.render();
+                }
+            },
+
+            importaSquadre() {
+                const url = prompt('Link Google Sheets (3 colonne: Squadra, Numero, Nome):');
+                if (!url) return;
+                
+                let csvUrl = url;
+                if (url.includes('/edit')) {
+                    const sheetId = url.match(/\/d\/([a-zA-Z0-9-_]+)/)[1];
+                    csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+                }
+                
+                fetch(csvUrl)
+                    .then(r => r.text())
+                    .then(csv => {
+                        Papa.parse(csv, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: (results) => {
+                                this.squadre = {};
+                                results.data.forEach(row => {
+                                    const sq = row.Squadra || row.squadra;
+                                    const num = parseInt(row.Numero || row.numero);
+                                    const nome = row.Nome || row.nome;
+                                    if (sq && num && nome) {
+                                        if (!this.squadre[sq]) this.squadre[sq] = [];
+                                        this.squadre[sq].push({ numero: num, nome });
+                                    }
+                                });
+                                this.salvaSquadre();
+                                alert(`✓ Importate ${Object.keys(this.squadre).length} squadre!`);
+                                this.render();
+                            }
+                        });
+                    })
+                    .catch(err => {
+                        alert('✗ Errore import. Verifica che il link sia pubblico.');
+                        console.error(err);
+                    });
+            },
+
+            importaPartite() {
+                const url = prompt('Link Google Sheets partite (colonne: Campo, Orario, SquadraA, SquadraB):');
+                if (!url) return;
+                
+                let csvUrl = url;
+                if (url.includes('/edit')) {
+                    const sheetId = url.match(/\/d\/([a-zA-Z0-9-_]+)/)[1];
+                    csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+                }
+                
+                fetch(csvUrl)
+                    .then(r => r.text())
+                    .then(csv => {
+                        Papa.parse(csv, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: async (results) => {
+                                let importate = 0;
+                                for (const row of results.data) {
+                                    try {
+                                        const campo = parseInt(row.Campo || row.campo || '1');
+                                        const orario = row.Orario || row.orario || '';
+                                        const squadraA = row.SquadraA || row['Squadra A'] || '';
+                                        const squadraB = row.SquadraB || row['Squadra B'] || '';
+                                        
+                                        if (!squadraA || !squadraB) continue;
+                                        
+                                        await this.aggiungiPartita(campo, orario, squadraA.trim(), squadraB.trim());
+                                        importate++;
+                                        await new Promise(resolve => setTimeout(resolve, 100));
+                                    } catch (error) {
+                                        console.error('Errore riga:', error);
+                                    }
+                                }
+                                alert(`✓ Importate ${importate} partite!`);
+                            }
+                        });
+                    })
+                    .catch(err => {
+                        alert('✗ Errore import partite.');
+                    });
+            },
+
+            calcolaClassifica() {
+                const cls = {};
+                this.partite.filter(p => p.completata).forEach(p => {
+                    [p.squadraA, p.squadraB].forEach((sq, idx) => {
+                        if (!cls[sq]) {
+                            cls[sq] = { nome: sq, punti: 0, giocate: 0, vinte: 0,
+                                pareggiate: 0, perse: 0, golFatti: 0, golSubiti: 0 };
+                        }
+                        const s = cls[sq];
+                        s.giocate++;
+                        if (idx === 0) {
+                            s.punti += p.puntiA;
+                            s.golFatti += p.punteggioA;
+                            s.golSubiti += p.punteggioB;
+                            if (p.punteggioA > p.punteggioB) s.vinte++;
+                            else if (p.punteggioA === p.punteggioB) s.pareggiate++;
+                            else s.perse++;
+                        } else {
+                            s.punti += p.puntiB;
+                            s.golFatti += p.punteggioB;
+                            s.golSubiti += p.punteggioA;
+                            if (p.punteggioB > p.punteggioA) s.vinte++;
+                            else if (p.punteggioA === p.punteggioB) s.pareggiate++;
+                            else s.perse++;
+                        }
+                    });
+                });
+                return Object.values(cls).sort((a, b) => {
+                    if (b.punti !== a.punti) return b.punti - a.punti;
+                    const da = a.golFatti - a.golSubiti;
+                    const db = b.golFatti - b.golSubiti;
+                    if (db !== da) return db - da;
+                    return b.golFatti - a.golFatti;
+                });
+            },
+
+            calcolaStatistiche() {
+                const m = {}, s = {}, v = {}, mvps = {};
+                this.partite.forEach(p => {
+                    ['A', 'B'].forEach(sq => {
+                        const nome = p[`squadra${sq}`];
+                        p[`gol${sq}`].forEach(g => {
+                            const k = `${g} (${nome})`;
+                            m[k] = (m[k] || 0) + 1;
+                        });
+                        p[`scalpi${sq}`].forEach(sc => {
+                            const k = `${sc} (${nome})`;
+                            s[k] = (s[k] || 0) + 1;
+                        });
+                        p[`vuoti${sq}`].forEach(vu => {
+                            const k = `${vu} (${nome})`;
+                            v[k] = (v[k] || 0) + 1;
+                        });
+                        if (p[`mvp${sq}`]) {
+                            const k = `${p[`mvp${sq}`]} (${nome})`;
+                            mvps[k] = (mvps[k] || 0) + 1;
+                        }
+                    });
+                });
+                return {
+                    marcatori: Object.entries(m).map(([nome, gol]) => ({ nome, gol })).sort((a, b) => b.gol - a.gol),
+                    scalpiatori: Object.entries(s).map(([nome, scalpi]) => ({ nome, scalpi })).sort((a, b) => b.scalpi - a.scalpi),
+                    vuotatori: Object.entries(v).map(([nome, vuoti]) => ({ nome, vuoti })).sort((a, b) => b.vuoti - a.vuoti),
+                    mvps: Object.entries(mvps).map(([nome, volte]) => ({ nome, volte })).sort((a, b) => b.volte - a.volte)
+                };
+            },
+
+            aggiungiElemento(id, squadra, tipo) {
+                const p = this.partite.find(x => x.id === id);
+                const inputId = `${tipo === 'scalpo' ? 'scalpo' : tipo}-${squadra}-${id}`;
+                const input = document.getElementById(inputId);
+                const val = input.tagName === 'SELECT' ? input.value : input.value.trim();
+                
+                if (!val) return;
+                
+                const key = tipo === 'gol' ? `gol${squadra}` : tipo === 'scalpo' ? `scalpi${squadra}` : null;
+                if (!key) return;
+                
+                const nuovi = [...p[key], val];
+                const updates = { [key]: nuovi };
+                
+                if (tipo === 'gol') {
+                    updates[`punteggio${squadra}`] = nuovi.length;
+                }
+                
+                this.aggiornaPartita(id, updates);
+                input.value = '';
+            },
+
+            rimuoviElemento(id, squadra, tipo, index) {
+                const p = this.partite.find(x => x.id === id);
+                const key = tipo === 'gol' ? `gol${squadra}` : tipo === 'scalpo' ? `scalpi${squadra}` : tipo === 'vuoto' ? `vuoti${squadra}` : null;
+                if (!key) return;
+                
+                const nuovi = [...p[key]];
+                nuovi.splice(index, 1);
+                const updates = { [key]: nuovi };
+                
+                if (tipo === 'gol') {
+                    updates[`punteggio${squadra}`] = nuovi.length;
+                }
+                
+                this.aggiornaPartita(id, updates);
+            },
+
+            aggiungiVuotoBtn(id, squadra) {
+                const input = document.getElementById(`vuoto-${squadra}-${id}`);
+                const val = input.tagName === 'SELECT' ? input.value : input.value.trim();
+                
+                if (!val) return;
+                
+                const p = this.partite.find(x => x.id === id);
+                if (p[`espulsi${squadra}`].includes(val)) {
+                    alert('🟥 Giocatore già espulso!');
+                    return;
+                }
+                
+                this.aggiungiVuoto(id, squadra, val);
+                input.value = '';
+            },
+
+            aggiungiVuoto(id, squadra, giocatore) {
+                const p = this.partite.find(x => x.id === id);
+                const vuoti = [...p[`vuoti${squadra}`], giocatore];
+                const conteggio = vuoti.filter(v => v === giocatore).length;
+                
+                let updates = { [`vuoti${squadra}`]: vuoti };
+                
+                if (conteggio === 3) {
+                    const espulsi = [...p[`espulsi${squadra}`], giocatore];
+                    updates[`espulsi${squadra}`] = espulsi;
+                    alert(`🟥 ESPULSIONE!\n${giocatore} ha 3 vuoti ed è stato espulso.`);
+                }
+                
+                this.aggiornaPartita(id, updates);
+            },
+
+            azzeraVuoti(id, squadra) {
+                if (!confirm(`Azzerare i vuoti del 1° tempo?`)) return;
+                this.aggiornaPartita(id, { 
+                    [`vuoti${squadra}`]: [],
+                    [`espulsi${squadra}`]: []
+                });
+            },
+
+            rientraEspulso(id, squadra, giocatore) {
+                if (!confirm(`Far rientrare ${giocatore}?`)) return;
+                const p = this.partite.find(x => x.id === id);
+                const espulsi = p[`espulsi${squadra}`].filter(e => e !== giocatore);
+                this.aggiornaPartita(id, { [`espulsi${squadra}`]: espulsi });
+            },
+
+            finalizzaPartita(id) {
+                const p = this.partite.find(x => x.id === id);
+                const mvpA = prompt(`MVP di ${p.squadraA}:`);
+                const mvpB = prompt(`MVP di ${p.squadraB}:`);
+                
+                const scoreA = p.golA.length;
+                const scoreB = p.golB.length;
+                let puntiA = 0, puntiB = 0;
+                
+                if (scoreA > scoreB) puntiA = 3;
+                else if (scoreB > scoreA) puntiB = 3;
+                else { puntiA = 1; puntiB = 1; }
+                
+                this.fermaTimer();
+                this.aggiornaPartita(id, { 
+                    punteggioA: scoreA, punteggioB: scoreB, 
+                    puntiA, puntiB, mvpA: mvpA || '', mvpB: mvpB || '', completata: true 
+                });
+            },
+
+            render() {
+                if (this.partitaSelezionata) {
+                    this.renderFormPartita();
+                } else {
+                    this.renderMain();
+                }
+            },
+
+            renderMain() {
+                const completate = this.partite.filter(p => p.completata).length;
+                
+                document.getElementById('app').innerHTML = `
+                    <div class="max-w-6xl mx-auto p-4">
+                        <header class="mb-8">
+                            <div class="flex items-center justify-center gap-3 mb-2">
+                                <h1 class="text-3xl font-bold text-cyan-400">24OdG</h1>
+                                <div class="px-3 py-1 rounded-full text-sm ${this.connesso ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}">
+                                    ${this.connesso ? '🟢 Online' : '🔴 Offline'}
+                                </div>
                             </div>
-                        `).join('')}
+                            <p class="text-center text-gray-400">Partite: ${this.partite.length} | Completate: ${completate} | Squadre: ${Object.keys(this.squadre).length}</p>
+                        </header>
+                        
+                        <nav class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                            <button onclick="app.vista='partite';app.render()" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vista === 'partite' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300'}">⚽ Partite</button>
+                            <button onclick="app.vista='squadre';app.render()" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vista === 'squadre' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300'}">👥 Squadre</button>
+                            <button onclick="app.vista='classifica';app.render()" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vista === 'classifica' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300'}">📊 Classifica</button>
+                            <button onclick="app.vista='statistiche';app.render()" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.vista === 'statistiche' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300'}">📈 Statistiche</button>
+                        </nav>
+                        
+                        <main id="contenuto"></main>
                     </div>
                 `;
-                container.appendChild(card);
-            });
-        }
-
-        async function importSquadre() {
-            const url = document.getElementById('sheetUrlSquadre').value.trim();
-            
-            console.log('🔍 Import squadre avviato');
-            console.log('URL inserito:', url);
-            
-            if (!url) {
-                alert('Inserisci URL Google Sheets');
-                return;
-            }
-
-            // Converti URL in formato export CSV
-            let csvUrl = url;
-            if (url.includes('/edit')) {
-                csvUrl = url.replace('/edit#gid=', '/export?format=csv&gid=')
-                           .replace('/edit?usp=sharing', '/export?format=csv')
-                           .replace('/edit', '/export?format=csv');
-            }
-            
-            console.log('URL CSV:', csvUrl);
-            
-            try {
-                Papa.parse(csvUrl, {
-                    download: true,
-                    header: true,
-                    complete: async function(results) {
-                        console.log('📊 Dati ricevuti:', results);
-                        
-                        const rows = results.data.filter(row => {
-                            const hasData = row.Squadra && row.Numero && row.Nome;
-                            if (!hasData) {
-                                console.log('❌ Riga ignorata:', row);
-                            }
-                            return hasData;
-                        });
-                        
-                        console.log('✅ Righe valide:', rows.length);
-                        
-                        if (rows.length === 0) {
-                            alert('Nessun dato valido trovato. Verifica che le colonne si chiamino: Squadra, Numero, Nome');
-                            return;
-                        }
-
-                        let importati = 0;
-                        for (const row of rows) {
-                            const { error } = await supabase.from('squadre').insert({
-                                nome_squadra: row.Squadra.trim(),
-                                numero: parseInt(row.Numero),
-                                nome_giocatore: row.Nome.trim()
-                            });
-                            
-                            if (!error) {
-                                importati++;
-                            } else {
-                                console.error('Errore inserimento:', error, row);
-                            }
-                        }
-
-                        alert(`✅ Importate ${importati} su ${rows.length} righe!`);
-                        loadSquadre();
-                    },
-                    error: function(error) {
-                        console.error('❌ Errore PapaParse:', error);
-                        alert('Errore import: ' + error.message + '\n\nAssicurati che il foglio Google sia pubblico!');
-                    }
-                });
-            } catch (error) {
-                console.error('❌ Errore generale:', error);
-                alert('Errore: ' + error.message);
-            }
-        }
-
-        async function aggiungiSquadraManuale() {
-            console.log('📝 Aggiungi squadra manuale avviato');
-            
-            const nomeSquadra = prompt('Nome squadra:');
-            if (!nomeSquadra) {
-                console.log('❌ Annullato - nessun nome squadra');
-                return;
-            }
-
-            console.log('Squadra:', nomeSquadra);
-            let count = 0;
-
-            while (true) {
-                const numero = prompt(`Numero maglia (lascia vuoto per finire):\n\nSquadra: ${nomeSquadra}\nGiocatori aggiunti: ${count}`);
-                if (!numero) {
-                    console.log('✅ Fine inserimento');
-                    break;
-                }
-
-                const nome = prompt(`Nome giocatore:\n\nSquadra: ${nomeSquadra}\nNumero: ${numero}`);
-                if (!nome) {
-                    console.log('❌ Annullato - nessun nome');
-                    break;
-                }
-
-                console.log('Inserisco:', { nomeSquadra, numero, nome });
                 
-                const { error } = await supabase.from('squadre').insert({
-                    nome_squadra: nomeSquadra.trim(),
-                    numero: parseInt(numero),
-                    nome_giocatore: nome.trim()
-                });
+                if (this.vista === 'partite') this.renderPartite();
+                else if (this.vista === 'squadre') this.renderSquadre();
+                else if (this.vista === 'classifica') this.renderClassifica();
+                else if (this.vista === 'statistiche') this.renderStatistiche();
+            },
+
+            renderPartite() {
+                const daGiocare = this.partite.filter(p => !p.completata);
+                const completate = this.partite.filter(p => p.completata);
+                const squadreDisponibili = Object.keys(this.squadre).sort();
                 
-                if (error) {
-                    console.error('Errore inserimento:', error);
-                    alert('Errore: ' + error.message);
-                    break;
-                } else {
-                    count++;
-                    console.log('✅ Giocatore aggiunto');
-                }
-            }
-
-            if (count > 0) {
-                alert(`✅ Aggiunti ${count} giocatori!`);
-                loadSquadre();
-            }
-        }
-
-        // GESTIONE PARTITE
-        async function loadPartite() {
-            let query = supabase.from('partite').select('*').order('campo').order('orario');
-
-            const filtroCampo = document.getElementById('filtroCampo').value;
-            const filtroOrario = document.getElementById('filtroOrario').value;
-            const filtroStato = document.getElementById('filtroStato').value;
-
-            if (filtroCampo) query = query.eq('campo', parseInt(filtroCampo));
-            if (filtroOrario) query = query.eq('orario', filtroOrario);
-            if (filtroStato === 'daGiocare') query = query.eq('completata', false);
-            if (filtroStato === 'completate') query = query.eq('completata', true);
-
-            const { data, error } = await query;
-
-            if (error) {
-                console.error('Errore caricamento partite:', error);
-                return;
-            }
-
-            const campi = [...new Set(data.map(p => p.campo))].sort((a,b) => a-b);
-            const orari = [...new Set(data.map(p => p.orario))].sort();
-
-            const filtroCampoEl = document.getElementById('filtroCampo');
-            const currentCampo = filtroCampoEl.value;
-            filtroCampoEl.innerHTML = '<option value="">Tutti i campi</option>' +
-                campi.map(c => `<option value="${c}" ${c == currentCampo ? 'selected' : ''}>Campo ${c}</option>`).join('');
-
-            const filtroOrarioEl = document.getElementById('filtroOrario');
-            const currentOrario = filtroOrarioEl.value;
-            filtroOrarioEl.innerHTML = '<option value="">Tutti gli orari</option>' +
-                orari.map(o => `<option value="${o}" ${o == currentOrario ? 'selected' : ''}>${o}</option>`).join('');
-
-            const container = document.getElementById('partiteList');
-            container.innerHTML = '';
-
-            if (data.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-400 py-8">Nessuna partita trovata</div>';
-                return;
-            }
-
-            data.forEach(partita => {
-                const card = document.createElement('div');
-                card.className = `bg-gray-800 rounded-lg shadow-lg p-4 cursor-pointer hover:bg-gray-700 transition ${partita.completata ? 'opacity-70' : ''}`;
-                card.onclick = () => apriReferto(partita.id);
-                
-                card.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <span class="bg-cyan-500 px-3 py-1 rounded-full text-sm font-bold">Campo ${partita.campo}</span>
-                            <span class="bg-gray-700 px-3 py-1 rounded-full text-sm">${partita.orario}</span>
-                            ${partita.completata ? '<span class="bg-green-500 px-2 py-1 rounded text-xs">✓</span>' : '<span class="bg-yellow-500 text-gray-900 px-2 py-1 rounded text-xs font-bold">DA GIOCARE</span>'}
+                document.getElementById('contenuto').innerHTML = `
+                    <div class="mb-6 flex gap-2 overflow-x-auto pb-2">
+                        <button onclick="app.sottovista='tutte';app.renderPartite()" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.sottovista === 'tutte' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300'}">Tutte (${this.partite.length})</button>
+                        <button onclick="app.sottovista='da_giocare';app.renderPartite()" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.sottovista === 'da_giocare' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300'}">Da Giocare (${daGiocare.length})</button>
+                        <button onclick="app.sottovista='completate';app.renderPartite()" class="px-4 py-2 rounded font-semibold whitespace-nowrap ${this.sottovista === 'completate' ? 'bg-cyan-600 text-white' : 'bg-gray-700 text-gray-300'}">Completate (${completate.length})</button>
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-lg p-6 mb-6 shadow-xl border border-gray-700">
+                        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                            <h2 class="text-xl font-semibold text-cyan-400">Nuova Partita</h2>
+                            <button onclick="app.importaPartite()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold text-sm">📥 Import Partite</button>
                         </div>
-                        <div class="text-right">
-                            <div class="text-sm font-bold">${partita.squadra_a} <span class="text-2xl text-cyan-400 mx-2">${partita.punteggio_a}</span> - <span class="text-2xl text-cyan-400 mx-2">${partita.punteggio_b}</span> ${partita.squadra_b}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Campo</label>
+                                <select id="campo" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                    ${[1,2,3,4,5,6,7,8].map(c => `<option value="${c}">${c}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Orario</label>
+                                <input type="time" id="orario" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Squadra A</label>
+                                ${squadreDisponibili.length > 0 ? `
+                                    <select id="squadraA" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                        <option value="">-- Seleziona --</option>
+                                        ${squadreDisponibili.map(s => `<option value="${s}">${s}</option>`).join('')}
+                                    </select>
+                                ` : `
+                                    <input type="text" id="squadraA" placeholder="Nome squadra" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                `}
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Squadra B</label>
+                                ${squadreDisponibili.length > 0 ? `
+                                    <select id="squadraB" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                        <option value="">-- Seleziona --</option>
+                                        ${squadreDisponibili.map(s => `<option value="${s}">${s}</option>`).join('')}
+                                    </select>
+                                ` : `
+                                    <input type="text" id="squadraB" placeholder="Nome squadra" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                `}
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="app.handleAggiungiPartita()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded">➕ Aggiungi</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="filtriPartite"></div>
+                    <div id="listaPartite"></div>
+                `;
+                
+                this.renderFiltriPartite();
+                this.renderListaPartite();
+            },
+
+            renderFiltriPartite() {
+                let partiteFiltrate = this.partite;
+                if (this.sottovista === 'da_giocare') partiteFiltrate = this.partite.filter(p => !p.completata);
+                else if (this.sottovista === 'completate') partiteFiltrate = this.partite.filter(p => p.completata);
+                
+                const campi = [...new Set(partiteFiltrate.map(p => p.campo))].sort((a, b) => a - b);
+                const orari = [...new Set(partiteFiltrate.map(p => p.orario).filter(o => o))].sort();
+                
+                document.getElementById('filtriPartite').innerHTML = `
+                    <div class="bg-gray-800 rounded-lg p-6 mb-6 shadow-xl border border-gray-700">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">🔍 Filtra Partite</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Filtra per Campo</label>
+                                <select id="selectFiltroCampo" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                                    <option value="tutti">Tutti i campi</option>
+                                    ${campi.map(c => `<option value="${c}">Campo ${c}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-2 text-gray-300">Filtra per Orario</label>
+                                <select id="selectFiltroOrario" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                                    <option value="tutti">Tutti gli orari</option>
+                                    ${orari.map(o => `<option value="${o}">${o}</option>`).join('')}
+                                </select>
+                            </div>
                         </div>
                     </div>
                 `;
-                container.appendChild(card);
-            });
-        }
+                
+                const selectCampo = document.getElementById('selectFiltroCampo');
+                const selectOrario = document.getElementById('selectFiltroOrario');
+                
+                if (selectCampo) {
+                    selectCampo.value = this.filtroCampo;
+                    selectCampo.onchange = (e) => {
+                        this.filtroCampo = e.target.value;
+                        this.renderListaPartite();
+                    };
+                }
+                
+                if (selectOrario) {
+                    selectOrario.value = this.filtroOrario;
+                    selectOrario.onchange = (e) => {
+                        this.filtroOrario = e.target.value;
+                        this.renderListaPartite();
+                    };
+                }
+            },
 
-        async function apriReferto(partitaId) {
-            currentPartitaId = partitaId;
+            handleAggiungiPartita() {
+                const campo = parseInt(document.getElementById('campo').value);
+                const orario = document.getElementById('orario').value;
+                const squadraA = document.getElementById('squadraA').value.trim();
+                const squadraB = document.getElementById('squadraB').value.trim();
+                
+                if (!squadraA || !squadraB) {
+                    alert('❌ Seleziona entrambe le squadre!');
+                    return;
+                }
+                
+                this.aggiungiPartita(campo, orario, squadraA, squadraB);
+                document.getElementById('squadraA').value = '';
+                document.getElementById('squadraB').value = '';
+                document.getElementById('orario').value = '';
+            },
 
-            const { data: partita } = await supabase
-                .from('partite')
-                .select('*')
-                .eq('id', partitaId)
-                .single();
-
-            currentPartita = partita;
-
-            const { data: squadraAData } = await supabase
-                .from('squadre')
-                .select('*')
-                .eq('nome_squadra', partita.squadra_a)
-                .order('numero');
-
-            const { data: squadraBData } = await supabase
-                .from('squadre')
-                .select('*')
-                .eq('nome_squadra', partita.squadra_b)
-                .order('numero');
-
-            giocatoriA = squadraAData || [];
-            giocatoriB = squadraBData || [];
-
-            pauseTimer();
-            timerSeconds = 900;
-            currentHalf = 1;
-            timerRunning = false;
-
-            document.getElementById('partiteListView').classList.add('hidden');
-            document.getElementById('partitaRefertoView').classList.remove('hidden');
-
-            renderReferto();
-        }
-
-        function tornaAllePartite() {
-            pauseTimer();
-            
-            document.getElementById('partiteListView').classList.remove('hidden');
-            document.getElementById('partitaRefertoView').classList.add('hidden');
-            currentPartitaId = null;
-            currentPartita = null;
-            
-            timerSeconds = 900;
-            currentHalf = 1;
-            timerRunning = false;
-            
-            loadPartite();
-        }
-
-        async function importPartite() {
-            const url = document.getElementById('sheetUrlPartite').value.trim();
-            
-            console.log('🔍 Import partite avviato');
-            console.log('URL inserito:', url);
-            
-            if (!url) {
-                alert('Inserisci URL Google Sheets');
-                return;
-            }
-
-            // Converti URL in formato export CSV
-            let csvUrl = url;
-            if (url.includes('/edit')) {
-                csvUrl = url.replace('/edit#gid=', '/export?format=csv&gid=')
-                           .replace('/edit?usp=sharing', '/export?format=csv')
-                           .replace('/edit', '/export?format=csv');
-            }
-            
-            console.log('URL CSV:', csvUrl);
-            
-            try {
-                Papa.parse(csvUrl, {
-                    download: true,
-                    header: true,
-                    complete: async function(results) {
-                        console.log('📊 Dati ricevuti:', results);
-                        
-                        const rows = results.data.filter(row => {
-                            const hasData = row.Campo && row.Orario && row.SquadraA && row.SquadraB;
-                            if (!hasData) {
-                                console.log('❌ Riga ignorata:', row);
-                            }
-                            return hasData;
-                        });
-                        
-                        console.log('✅ Righe valide:', rows.length);
-                        
-                        if (rows.length === 0) {
-                            alert('Nessun dato valido trovato. Verifica che le colonne si chiamino: Campo, Orario, SquadraA, SquadraB');
-                            return;
-                        }
-
-                        let importate = 0;
-                        for (const row of rows) {
-                            const { error } = await supabase.from('partite').insert({
-                                campo: parseInt(row.Campo),
-                                orario: row.Orario.trim(),
-                                squadra_a: row.SquadraA.trim(),
-                                squadra_b: row.SquadraB.trim()
-                            });
-                            
-                            if (!error) {
-                                importate++;
-                            } else {
-                                console.error('Errore inserimento:', error, row);
-                            }
-                        }
-
-                        alert(`✅ Importate ${importate} su ${rows.length} partite!`);
-                        loadPartite();
-                    },
-                    error: function(error) {
-                        console.error('❌ Errore PapaParse:', error);
-                        alert('Errore import: ' + error.message + '\n\nAssicurati che il foglio Google sia pubblico!');
-                    }
+            renderListaPartite() {
+                let partite = this.partite;
+                if (this.sottovista === 'da_giocare') partite = partite.filter(p => !p.completata);
+                else if (this.sottovista === 'completate') partite = partite.filter(p => p.completata);
+                
+                if (this.filtroCampo !== 'tutti') {
+                    partite = partite.filter(p => p.campo === parseInt(this.filtroCampo));
+                }
+                if (this.filtroOrario !== 'tutti') {
+                    partite = partite.filter(p => p.orario === this.filtroOrario);
+                }
+                
+                if (partite.length === 0) {
+                    document.getElementById('listaPartite').innerHTML = '<div class="text-center text-gray-500 py-12">Nessuna partita trovata</div>';
+                    return;
+                }
+                
+                const raggruppate = {};
+                partite.forEach(p => {
+                    const key = `${p.orario || 'Senza orario'}_Campo ${p.campo}`;
+                    if (!raggruppate[key]) raggruppate[key] = [];
+                    raggruppate[key].push(p);
                 });
-            } catch (error) {
-                console.error('❌ Errore generale:', error);
-                alert('Errore: ' + error.message);
-            }
-        }
-
-        async function aggiungiPartitaManuale() {
-            console.log('📝 Aggiungi partita manuale avviata');
-            
-            const campo = prompt('Numero campo:');
-            if (!campo) {
-                console.log('❌ Annullato');
-                return;
-            }
-
-            const orario = prompt('Orario (es. 10:30):');
-            if (!orario) {
-                console.log('❌ Annullato');
-                return;
-            }
-
-            const squadraA = prompt('Squadra A:');
-            if (!squadraA) {
-                console.log('❌ Annullato');
-                return;
-            }
-
-            const squadraB = prompt('Squadra B:');
-            if (!squadraB) {
-                console.log('❌ Annullato');
-                return;
-            }
-
-            console.log('Inserisco partita:', { campo, orario, squadraA, squadraB });
-
-            const { error } = await supabase.from('partite').insert({
-                campo: parseInt(campo),
-                orario: orario.trim(),
-                squadra_a: squadraA.trim(),
-                squadra_b: squadraB.trim()
-            });
-            
-            if (error) {
-                console.error('Errore inserimento:', error);
-                alert('Errore: ' + error.message);
-            } else {
-                console.log('✅ Partita aggiunta');
-                alert('✅ Partita aggiunta!');
-                loadPartite();
-            }
-        }
-
-        // REFERTO PARTITA + TIMER
-        let currentPartitaId = null;
-        let currentPartita = null;
-        let giocatoriA = [];
-        let giocatoriB = [];
-        let timerInterval = null;
-        let timerSeconds = 900;
-        let timerRunning = false;
-        let currentHalf = 1;
-
-        async function reloadCurrentReferto() {
-            if (!currentPartitaId) return;
-            await apriReferto(currentPartitaId);
-        }
-
-        function startTimer() {
-            if (timerRunning) return;
-            timerRunning = true;
-            
-            timerInterval = setInterval(() => {
-                if (timerSeconds > 0) {
-                    timerSeconds--;
-                    updateTimerDisplay();
-                } else {
-                    pauseTimer();
-                    playBeep();
-                    alert(`⏰ Fine ${currentHalf}° Tempo!`);
-                }
-            }, 1000);
-            
-            updateTimerButtons();
-        }
-
-        function pauseTimer() {
-            timerRunning = false;
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-            updateTimerButtons();
-        }
-
-        function resetTimer() {
-            pauseTimer();
-            timerSeconds = 900;
-            updateTimerDisplay();
-        }
-
-        function switchHalf() {
-            if (!confirm('Passare al 2° tempo? Il timer sarà resettato.')) return;
-            currentHalf = 2;
-            resetTimer();
-            updateTimerDisplay();
-        }
-
-        function updateTimerDisplay() {
-            const minutes = Math.floor(timerSeconds / 60);
-            const seconds = timerSeconds % 60;
-            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            const timerEl = document.getElementById('timerDisplay');
-            if (timerEl) {
-                timerEl.textContent = display;
                 
-                if (timerSeconds < 60) {
-                    timerEl.classList.add('text-red-400');
-                    timerEl.classList.remove('text-cyan-400');
-                } else {
-                    timerEl.classList.add('text-cyan-400');
-                    timerEl.classList.remove('text-red-400');
-                }
-            }
-            
-            const halfEl = document.getElementById('currentHalf');
-            if (halfEl) {
-                halfEl.textContent = currentHalf === 1 ? '1° Tempo' : '2° Tempo';
-            }
-        }
-
-        function updateTimerButtons() {
-            const startBtn = document.getElementById('startTimerBtn');
-            const pauseBtn = document.getElementById('pauseTimerBtn');
-            
-            if (startBtn && pauseBtn) {
-                if (timerRunning) {
-                    startBtn.classList.add('hidden');
-                    pauseBtn.classList.remove('hidden');
-                } else {
-                    startBtn.classList.remove('hidden');
-                    pauseBtn.classList.add('hidden');
-                }
-            }
-        }
-
-        function playBeep() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
-        }
-
-        function renderReferto() {
-            if (!currentPartita) return;
-
-            const container = document.getElementById('refertoContent');
-            
-            container.innerHTML = `
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="bg-cyan-500 px-4 py-2 rounded-full font-bold">Campo ${currentPartita.campo}</span>
-                        <span class="bg-gray-700 px-4 py-2 rounded-full">${currentPartita.orario}</span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-4 items-center text-center">
-                        <div>
-                            <div class="text-xl font-bold mb-2">${currentPartita.squadra_a}</div>
-                            <div class="text-5xl font-bold text-cyan-400">${currentPartita.punteggio_a}</div>
-                        </div>
-                        <div class="text-gray-500 font-bold text-2xl">VS</div>
-                        <div>
-                            <div class="text-xl font-bold mb-2">${currentPartita.squadra_b}</div>
-                            <div class="text-5xl font-bold text-cyan-400">${currentPartita.punteggio_b}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <div class="text-center mb-4">
-                        <div class="text-sm text-gray-400 mb-2" id="currentHalf">1° Tempo</div>
-                        <div class="text-6xl font-bold text-cyan-400 mb-4 font-mono" id="timerDisplay">15:00</div>
-                        <div class="flex gap-3 justify-center flex-wrap">
-                            <button id="startTimerBtn" onclick="startTimer()" class="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-lg font-bold transition">
-                                ▶️ Avvia
-                            </button>
-                            <button id="pauseTimerBtn" onclick="pauseTimer()" class="hidden bg-yellow-500 hover:bg-yellow-600 px-6 py-3 rounded-lg font-bold transition">
-                                ⏸️ Pausa
-                            </button>
-                            <button onclick="resetTimer()" class="bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-lg font-bold transition">
-                                🔄 Reset
-                            </button>
-                            <button onclick="switchHalf()" class="bg-purple-500 hover:bg-purple-600 px-6 py-3 rounded-lg font-bold transition">
-                                ⏭️ 2° Tempo
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <button onclick="azzeraPrimoTempo()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition">
-                        🔄 Azzera 1° Tempo (Reset Vuoti + Rientro Espulsi)
-                    </button>
-                </div>
-
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <h3 class="text-xl font-bold text-cyan-400 mb-4">${currentPartita.squadra_a}</h3>
-                    
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-yellow-400">⚽ Gol</label>
-                        <select id="golSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
-                            <option value="">Seleziona giocatore...</option>
-                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
-                        </select>
-                        <button onclick="aggiungiGol('a')" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 rounded-lg transition">
-                            Aggiungi Gol
-                        </button>
-                        <div class="mt-2 text-sm">Marcatori: ${(currentPartita.gol_a || []).join(', ') || 'Nessuno'}</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-red-400">🎯 Scalpi</label>
-                        <select id="scalpoSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
-                            <option value="">Seleziona giocatore...</option>
-                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
-                        </select>
-                        <button onclick="aggiungiScalpo('a')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition">
-                            Aggiungi Scalpo
-                        </button>
-                        <div class="mt-2 text-sm">Scalpi: ${(currentPartita.scalpi_a || []).join(', ') || 'Nessuno'}</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-orange-400">❌ Vuoti</label>
-                        <select id="vuotoSelectA" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
-                            <option value="">Seleziona giocatore...</option>
-                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
-                        </select>
-                        <button onclick="aggiungiVuoto('a')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg transition">
-                            Aggiungi Vuoto
-                        </button>
-                        <div class="mt-2 text-sm">Vuoti: ${(currentPartita.vuoti_a || []).join(', ') || 'Nessuno'}</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-red-600">🚫 Espulsi</label>
-                        <div class="bg-gray-700 px-4 py-3 rounded-lg">
-                            ${(currentPartita.espulsi_a || []).length > 0 ? 
-                                currentPartita.espulsi_a.map(e => `
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span>${e}</span>
-                                        <button onclick="rientroEspulso('a', '${e}')" class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-sm">
-                                            Rientro
-                                        </button>
+                document.getElementById('listaPartite').innerHTML = Object.keys(raggruppate).sort().map(key => {
+                    return `
+                        <div class="mb-6">
+                            <div class="bg-gray-700 px-4 py-2 rounded-t-lg font-semibold text-cyan-300">🕐 ${key}</div>
+                            <div class="space-y-3 mt-2">
+                                ${raggruppate[key].map(p => `
+                                    <div onclick="app.partitaSelezionata=${p.id};app.render()" class="bg-gray-800 rounded-lg p-4 shadow-lg border border-gray-700 cursor-pointer hover:border-cyan-500 transition">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex-1">
+                                                <div class="text-lg font-bold">
+                                                    <span class="text-cyan-300">${p.squadraA}</span>
+                                                    <span class="text-gray-500 mx-2">vs</span>
+                                                    <span class="text-cyan-300">${p.squadraB}</span>
+                                                </div>
+                                                ${p.completata ? `
+                                                    <div class="text-2xl font-bold text-yellow-400 mt-2">${p.punteggioA} - ${p.punteggioB}</div>
+                                                ` : `
+                                                    <div class="text-sm text-gray-400 mt-2">Gol: ${p.golA.length}-${p.golB.length}</div>
+                                                `}
+                                            </div>
+                                            <div>
+                                                <span class="px-3 py-1 rounded-full text-sm font-semibold ${p.completata ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300'}">
+                                                    ${p.completata ? '✓ Completata' : '▶ In corso'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                `).join('') 
-                                : '<span class="text-gray-400">Nessun espulso</span>'}
+                                `).join('')}
+                            </div>
                         </div>
-                    </div>
+                    `;
+                }).join('');
+            },
 
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-cyan-400">⭐ MVP</label>
-                        <select id="mvpSelectA" onchange="aggiungiMVP('a')" class="w-full bg-gray-700 px-4 py-2 rounded-lg">
-                            <option value="">Seleziona MVP...</option>
-                            ${giocatoriA.map(g => `<option value="${g.nome_giocatore}" ${currentPartita.mvp_a === g.nome_giocatore ? 'selected' : ''}>${g.numero} - ${g.nome_giocatore}</option>`).join('')}
-                        </select>
-                        <div class="mt-2 text-sm text-cyan-300">MVP attuale: ${currentPartita.mvp_a || 'Nessuno'}</div>
-                    </div>
-                </div>
-
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-                    <h3 class="text-xl font-bold text-cyan-400 mb-4">${currentPartita.squadra_b}</h3>
-                    
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-yellow-400">⚽ Gol</label>
-                        <select id="golSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
-                            <option value="">Seleziona giocatore...</option>
-                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
-                        </select>
-                        <button onclick="aggiungiGol('b')" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 rounded-lg transition">
-                            Aggiungi Gol
-                        </button>
-                        <div class="mt-2 text-sm">Marcatori: ${(currentPartita.gol_b || []).join(', ') || 'Nessuno'}</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-red-400">🎯 Scalpi</label>
-                        <select id="scalpoSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
-                            <option value="">Seleziona giocatore...</option>
-                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
-                        </select>
-                        <button onclick="aggiungiScalpo('b')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition">
-                            Aggiungi Scalpo
-                        </button>
-                        <div class="mt-2 text-sm">Scalpi: ${(currentPartita.scalpi_b || []).join(', ') || 'Nessuno'}</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-orange-400">❌ Vuoti</label>
-                        <select id="vuotoSelectB" class="w-full bg-gray-700 px-4 py-2 rounded-lg mb-2">
-                            <option value="">Seleziona giocatore...</option>
-                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}">${g.numero} - ${g.nome_giocatore}</option>`).join('')}
-                        </select>
-                        <button onclick="aggiungiVuoto('b')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg transition">
-                            Aggiungi Vuoto
-                        </button>
-                        <div class="mt-2 text-sm">Vuoti: ${(currentPartita.vuoti_b || []).join(', ') || 'Nessuno'}</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-red-600">🚫 Espulsi</label>
-                        <div class="bg-gray-700 px-4 py-3 rounded-lg">
-                            ${(currentPartita.espulsi_b || []).length > 0 ? 
-                                currentPartita.espulsi_b.map(e => `
-                                    <div class="flex justify-between items-center mb-2">
-                                        <span>${e}</span>
-                                        <button onclick="rientroEspulso('b', '${e}')" class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-sm">
-                                            Rientro
-                                        </button>
+            renderSquadre() {
+                const lista = Object.keys(this.squadre).sort();
+                document.getElementById('contenuto').innerHTML = `
+                    <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                            <h2 class="text-xl font-semibold text-cyan-400">Gestione Squadre</h2>
+                            <div class="flex gap-2">
+                                <button onclick="app.importaSquadre()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold text-sm">📥 Import</button>
+                                <button onclick="app.aggiungiSquadraManuale()" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded font-semibold text-sm">➕ Aggiungi</button>
+                            </div>
+                        </div>
+                        ${lista.length === 0 ? '<p class="text-center text-gray-500 py-12">Nessuna squadra</p>' : `
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                ${lista.map(nome => `
+                                    <div class="bg-gray-700 rounded-lg p-4">
+                                        <h3 class="font-bold text-lg text-cyan-300 mb-3">${nome}</h3>
+                                        <div class="space-y-1 max-h-48 overflow-y-auto">
+                                            ${this.squadre[nome].map(g => `
+                                                <div class="text-sm bg-gray-600 rounded px-2 py-1">
+                                                    <span class="font-semibold text-cyan-400">${g.numero}</span> - ${g.nome}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                        <div class="mt-2 text-xs text-gray-400">${this.squadre[nome].length} giocatori</div>
                                     </div>
-                                `).join('') 
-                                : '<span class="text-gray-400">Nessun espulso</span>'}
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                `;
+            },
+
+            renderClassifica() {
+                const cls = this.calcolaClassifica();
+                if (cls.length === 0) {
+                    document.getElementById('contenuto').innerHTML = '<p class="text-center text-gray-500 py-12">Nessuna partita completata</p>';
+                    return;
+                }
+                
+                document.getElementById('contenuto').innerHTML = `
+                    <div class="bg-gray-800 rounded-lg shadow-xl border border-gray-700 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-700">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Pos</th>
+                                        <th class="px-4 py-3 text-left text-cyan-400 font-semibold">Squadra</th>
+                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">Pt</th>
+                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">G</th>
+                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">V</th>
+                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">N</th>
+                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">P</th>
+                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">GF</th>
+                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">GS</th>
+                                        <th class="px-4 py-3 text-center text-cyan-400 font-semibold">DR</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${cls.map((s, i) => `
+                                        <tr class="border-t border-gray-700 ${i < 3 ? 'bg-green-900 bg-opacity-20' : ''}">
+                                            <td class="px-4 py-3 font-bold ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</td>
+                                            <td class="px-4 py-3 font-semibold">${s.nome}</td>
+                                            <td class="px-4 py-3 text-center font-bold text-cyan-400">${s.punti}</td>
+                                            <td class="px-4 py-3 text-center">${s.giocate}</td>
+                                            <td class="px-4 py-3 text-center text-green-400">${s.vinte}</td>
+                                            <td class="px-4 py-3 text-center text-yellow-400">${s.pareggiate}</td>
+                                            <td class="px-4 py-3 text-center text-red-400">${s.perse}</td>
+                                            <td class="px-4 py-3 text-center">${s.golFatti}</td>
+                                            <td class="px-4 py-3 text-center">${s.golSubiti}</td>
+                                            <td class="px-4 py-3 text-center font-semibold ${s.golFatti - s.golSubiti > 0 ? 'text-green-400' : s.golFatti - s.golSubiti < 0 ? 'text-red-400' : ''}">${s.golFatti - s.golSubiti > 0 ? '+' : ''}${s.golFatti - s.golSubiti}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
+                `;
+            },
 
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold mb-2 text-cyan-400">⭐ MVP</label>
-                        <select id="mvpSelectB" onchange="aggiungiMVP('b')" class="w-full bg-gray-700 px-4 py-2 rounded-lg">
-                            <option value="">Seleziona MVP...</option>
-                            ${giocatoriB.map(g => `<option value="${g.nome_giocatore}" ${currentPartita.mvp_b === g.nome_giocatore ? 'selected' : ''}>${g.numero} - ${g.nome_giocatore}</option>`).join('')}
-                        </select>
-                        <div class="mt-2 text-sm text-cyan-300">MVP attuale: ${currentPartita.mvp_b || 'Nessuno'}</div>
+            renderStatistiche() {
+                const stats = this.calcolaStatistiche();
+                const renderLista = (titolo, emoji, lista, colorBg) => {
+                    if (lista.length === 0) return `<p class="text-gray-500">Nessun dato</p>`;
+                    return `
+                        <div class="space-y-2">
+                            ${lista.slice(0, 10).map((item, i) => `
+                                <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <span class="font-bold ${i === 0 ? 'text-yellow-400 text-lg' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</span>
+                                        <span class="text-white">${item.nome}</span>
+                                    </div>
+                                    <span class="${colorBg} px-3 py-1 rounded-full font-bold">${item.gol || item.scalpi || item.vuoti || item.volte}${item.volte ? 'x' : ''}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                };
+                
+                document.getElementById('contenuto').innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">⚽ Marcatori</h2>
+                            ${renderLista('Marcatori', '⚽', stats.marcatori, 'bg-cyan-900 text-cyan-300')}
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">🔪 Scalpi</h2>
+                            ${renderLista('Scalpi', '🔪', stats.scalpiatori, 'bg-red-900 text-red-300')}
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">🔵 Vuoti</h2>
+                            ${renderLista('Vuoti', '🔵', stats.vuotatori, 'bg-blue-900 text-blue-300')}
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">⭐ MVP</h2>
+                            ${renderLista('MVP', '⭐', stats.mvps, 'bg-purple-900 text-purple-300')}
+                        </div>
                     </div>
-                </div>
+                `;
+            },
 
-                <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                    <button onclick="finalizzaPartita()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-lg transition text-xl">
-                        ✓ Finalizza Partita
-                    </button>
-                </div>
-            `;
-            
-            updateTimerDisplay();
-            updateTimerButtons();
-        }
+            renderFormPartita() {
+                const p = this.partite.find(x => x.id === this.partitaSelezionata);
+                if (!p) return;
 
-        async function aggiungiGol(squadra) {
-            const select = document.getElementById(`golSelect${squadra.toUpperCase()}`);
-            const giocatore = select.value;
-            if (!giocatore) return;
+                const giocatoriA = this.squadre[p.squadraA] || [];
+                const giocatoriB = this.squadre[p.squadraB] || [];
+                const tempoDurante = this.timerAttivo ? this.formatoTempo(this.secondi) : '00:00';
 
-            const field = squadra === 'a' ? 'gol_a' : 'gol_b';
-            const scoreField = squadra === 'a' ? 'punteggio_a' : 'punteggio_b';
-            
-            const gol = [...(currentPartita[field] || []), giocatore];
-            
-            await supabase
-                .from('partite')
-                .update({ 
-                    [field]: gol,
-                    [scoreField]: gol.length
-                })
-                .eq('id', currentPartitaId);
+                const vuotiPerGiocatoreA = {};
+                const vuotiPerGiocatoreB = {};
+                p.vuotiA.forEach(v => vuotiPerGiocatoreA[v] = (vuotiPerGiocatoreA[v] || 0) + 1);
+                p.vuotiB.forEach(v => vuotiPerGiocatoreB[v] = (vuotiPerGiocatoreB[v] || 0) + 1);
 
-            select.value = '';
-            await reloadCurrentReferto();
-        }
+                const html = `
+                    <div class="max-w-6xl mx-auto p-4">
+                        <button onclick="app.partitaSelezionata=null;app.render()" class="mb-6 text-cyan-400 hover:text-cyan-300 flex items-center gap-2 font-semibold">
+                            ← Torna alla lista
+                        </button>
 
-        async function aggiungiScalpo(squadra) {
-            const select = document.getElementById(`scalpoSelect${squadra.toUpperCase()}`);
-            const giocatore = select.value;
-            if (!giocatore) return;
+                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700 mb-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h1 class="text-2xl font-bold">Campo ${p.campo} • ${p.orario}</h1>
+                                    <p class="text-gray-400 mt-1">${p.squadraA} vs ${p.squadraB}</p>
+                                </div>
+                                <div class="text-right">
+                                    ${p.completata ? `
+                                        <div class="text-3xl font-bold text-yellow-400">${p.punteggioA} - ${p.punteggioB}</div>
+                                        <span class="text-green-300 text-sm">✓ Completata</span>
+                                    ` : `
+                                        <div class="bg-gray-700 rounded-lg p-4 text-center">
+                                            <div class="text-4xl font-bold text-cyan-400 mb-2 font-mono">${tempoDurante}</div>
+                                            <div class="text-sm text-gray-300 mb-3">Tempo ${this.tempo}/2</div>
+                                            <div class="flex gap-2">
+                                                ${!this.timerAttivo ? `
+                                                    <button onclick="app.avviaTimer(${p.id})" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded font-semibold text-sm">▶ Avvia</button>
+                                                ` : `
+                                                    <button onclick="app.fermaTimer()" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded font-semibold text-sm">⏸ Ferma</button>
+                                                `}
+                                            </div>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
 
-            const field = squadra === 'a' ? 'scalpi_a' : 'scalpi_b';
-            const scalpi = [...(currentPartita[field] || []), giocatore];
-            
-            await supabase
-                .from('partite')
-                .update({ [field]: scalpi })
-                .eq('id', currentPartitaId);
+                        ${!p.completata ? `
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                ${this.renderSezioneSegnata(p, 'A', giocatoriA, vuotiPerGiocatoreA)}
+                                ${this.renderSezioneSegnata(p, 'B', giocatoriB, vuotiPerGiocatoreB)}
+                            </div>
 
-            select.value = '';
-            await reloadCurrentReferto();
-        }
+                            <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                                <button onclick="app.finalizzaPartita(${p.id})" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded text-lg">
+                                    🏁 Finalizza Partita
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                ${this.renderRiepilogo(p, 'A')}
+                                ${this.renderRiepilogo(p, 'B')}
+                            </div>
+                        `}
+                    </div>
+                `;
+                document.getElementById('app').innerHTML = html;
+            },
 
-        async function aggiungiVuoto(squadra) {
-            const select = document.getElementById(`vuotoSelect${squadra.toUpperCase()}`);
-            const giocatore = select.value;
-            if (!giocatore) return;
+            renderSezioneSegnata(p, squadra, giocatori, vuotiPerGiocatore) {
+                const nome = p[`squadra${squadra}`];
+                const gol = p[`gol${squadra}`];
+                const scalpi = p[`scalpi${squadra}`];
+                const vuoti = p[`vuoti${squadra}`];
+                const espulsi = p[`espulsi${squadra}`];
+                const punteggio = p[`punteggio${squadra}`];
 
-            const vuotiField = squadra === 'a' ? 'vuoti_a' : 'vuoti_b';
-            const espulsiField = squadra === 'a' ? 'espulsi_a' : 'espulsi_b';
-            
-            const vuoti = [...(currentPartita[vuotiField] || []), giocatore];
-            
-            const countVuoti = vuoti.filter(v => v === giocatore).length;
-            
-            let update = { [vuotiField]: vuoti };
-            
-            if (countVuoti >= 3) {
-                const espulsi = [...(currentPartita[espulsiField] || [])];
-                if (!espulsi.includes(giocatore)) {
-                    espulsi.push(giocatore);
-                    update[espulsiField] = espulsi;
-                    alert(`⚠️ ${giocatore} ESPULSO per 3 vuoti!`);
-                }
+                return `
+                    <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-cyan-300">${nome}</h2>
+                            <div class="text-4xl font-bold text-yellow-400">${punteggio}</div>
+                        </div>
+
+                        ${espulsi.length > 0 ? `
+                            <div class="mb-6 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg p-4">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-red-400 text-xl">🟥</span>
+                                    <span class="font-bold text-red-300">Espulsi (${espulsi.length})</span>
+                                </div>
+                                <div class="space-y-2">
+                                    ${espulsi.map(e => `
+                                        <div class="bg-red-900 bg-opacity-40 rounded px-3 py-2 flex justify-between items-center">
+                                            <span class="text-red-200">${e}</span>
+                                            <button onclick="app.rientraEspulso(${p.id}, '${squadra}', '${e}')" class="text-green-400 hover:text-green-300 text-xs font-semibold">Rientra</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div class="mb-6">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="text-yellow-400 text-xl">⚽</span>
+                                <span class="font-bold text-gray-200">Gol (${gol.length})</span>
+                            </div>
+                            <div class="flex gap-2 mb-3">
+                                ${giocatori.length > 0 ? `
+                                    <select id="gol-${squadra}-${p.id}" class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                        <option value="">-- Seleziona --</option>
+                                        ${giocatori.map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
+                                    </select>
+                                ` : `
+                                    <input type="text" id="gol-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                `}
+                                <button onclick="app.aggiungiElemento(${p.id}, '${squadra}', 'gol')" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded font-bold">+</button>
+                            </div>
+                            <div class="space-y-2 max-h-32 overflow-y-auto">
+                                ${gol.map((g, i) => `
+                                    <div class="bg-gray-700 rounded px-3 py-2 flex justify-between items-center text-sm">
+                                        <span>⚽ ${g}</span>
+                                        <button onclick="app.rimuoviElemento(${p.id}, '${squadra}', 'gol', ${i})" class="text-red-400 hover:text-red-300">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="text-red-400 text-xl">🔪</span>
+                                <span class="font-bold text-gray-200">Scalpi (${scalpi.length})</span>
+                            </div>
+                            <div class="flex gap-2 mb-3">
+                                ${giocatori.length > 0 ? `
+                                    <select id="scalpo-${squadra}-${p.id}" class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                        <option value="">-- Seleziona --</option>
+                                        ${giocatori.map(g => `<option value="${g.numero} - ${g.nome}">${g.numero} - ${g.nome}</option>`).join('')}
+                                    </select>
+                                ` : `
+                                    <input type="text" id="scalpo-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                `}
+                                <button onclick="app.aggiungiElemento(${p.id}, '${squadra}', 'scalpo')" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded font-bold">+</button>
+                            </div>
+                            <div class="space-y-2 max-h-32 overflow-y-auto">
+                                ${scalpi.map((s, i) => `
+                                    <div class="bg-gray-700 rounded px-3 py-2 flex justify-between items-center text-sm">
+                                        <span>🔪 ${s}</span>
+                                        <button onclick="app.rimuoviElemento(${p.id}, '${squadra}', 'scalpo', ${i})" class="text-red-400 hover:text-red-300">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-blue-400 text-xl">🔵</span>
+                                    <span class="font-bold text-gray-200">Vuoti (${vuoti.length})</span>
+                                </div>
+                                ${vuoti.length > 0 ? `
+                                    <button onclick="app.azzeraVuoti(${p.id}, '${squadra}')" class="text-xs bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded">Azzera 1°T</button>
+                                ` : ''}
+                            </div>
+                            <div class="flex gap-2 mb-3">
+                                ${giocatori.length > 0 ? `
+                                    <select id="vuoto-${squadra}-${p.id}" class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                        <option value="">-- Seleziona --</option>
+                                        ${giocatori.map(g => {
+                                            const gNome = `${g.numero} - ${g.nome}`;
+                                            const cnt = vuotiPerGiocatore[gNome] || 0;
+                                            const isEspulso = espulsi.includes(gNome);
+                                            return `<option value="${gNome}" ${isEspulso ? 'disabled' : ''}>${gNome}${cnt > 0 ? ` (${cnt})` : ''}${isEspulso ? ' [ESP]' : ''}</option>`;
+                                        }).join('')}
+                                    </select>
+                                ` : `
+                                    <input type="text" id="vuoto-${squadra}-${p.id}" placeholder="Nome" class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                                `}
+                                <button onclick="app.aggiungiVuotoBtn(${p.id}, '${squadra}')" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded font-bold">+</button>
+                            </div>
+                            <div class="space-y-2 max-h-32 overflow-y-auto">
+                                ${vuoti.map((v, i) => {
+                                    const cnt = vuotiPerGiocatore[v];
+                                    return `
+                                        <div class="bg-gray-700 rounded px-3 py-2 flex justify-between items-center text-sm ${cnt >= 3 ? 'border-2 border-red-500 bg-red-900 bg-opacity-30' : ''}">
+                                            <span>🔵 ${v} ${cnt >= 2 ? `<span class="text-orange-400 font-bold">(${cnt}/3)</span>` : ''}</span>
+                                            <button onclick="app.rimuoviElemento(${p.id}, '${squadra}', 'vuoto', ${i})" class="text-red-400 hover:text-red-300">✕</button>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderRiepilogo(p, squadra) {
+                const nome = p[`squadra${squadra}`];
+                const gol = p[`gol${squadra}`];
+                const scalpi = p[`scalpi${squadra}`];
+                const punteggio = p[`punteggio${squadra}`];
+                const mvp = p[`mvp${squadra}`];
+
+                return `
+                    <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                        <h2 class="text-2xl font-bold text-cyan-300 mb-4">${nome}</h2>
+                        <div class="text-4xl font-bold text-yellow-400 mb-6">${punteggio}</div>
+                        
+                        <div class="mb-6">
+                            <div class="text-sm text-gray-400 mb-2">Gol: ${gol.length}</div>
+                            <div class="bg-gray-700 rounded p-4 text-sm space-y-2">
+                                ${gol.length > 0 ? gol.map(g => `<div class="text-cyan-300">⚽ ${g}</div>`).join('') : '<div class="text-gray-500">Nessun gol</div>'}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <div class="text-sm text-gray-400 mb-2">Scalpi: ${scalpi.length}</div>
+                            <div class="bg-gray-700 rounded p-4 text-sm space-y-2">
+                                ${scalpi.length > 0 ? scalpi.map(s => `<div class="text-red-300">🔪 ${s}</div>`).join('') : '<div class="text-gray-500">Nessuno scalpo</div>'}
+                            </div>
+                        </div>
+
+                        ${mvp ? `
+                            <div class="bg-purple-900 bg-opacity-40 border border-purple-700 rounded-lg p-4">
+                                <div class="text-sm text-gray-400 mb-1">MVP</div>
+                                <div class="text-lg font-bold text-purple-300">⭐ ${mvp}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
             }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
             
-            await supabase
-                .from('partite')
-                .update(update)
-                .eq('id', currentPartitaId);
-
-            select.value = '';
-            await reloadCurrentReferto();
-        }
-
-        async function rientroEspulso(squadra, giocatore) {
-            const field = squadra === 'a' ? 'espulsi_a' : 'espulsi_b';
-            const espulsi = (currentPartita[field] || []).filter(e => e !== giocatore);
-            
-            await supabase
-                .from('partite')
-                .update({ [field]: espulsi })
-                .eq('id', currentPartitaId);
-
-            await reloadCurrentReferto();
-        }
-
-        async function azzeraPrimoTempo() {
-            if (!confirm('Azzerare vuoti e far rientrare tutti gli espulsi?')) return;
-
-            await supabase
-                .from('partite')
-                .update({
-                    vuoti_a: [],
-                    vuoti_b: [],
-                    espulsi_a: [],
-                    espulsi_b: []
-                })
-                .eq('id', currentPartitaId);
-
-            alert('✓ Primo tempo azzerato! Tutti rientrati.');
-            await reloadCurrentReferto();
-        }
-
-        async function aggiungiMVP(squadra) {
-            const select = document.getElementById(`mvpSelect${squadra.toUpperCase()}`);
-            const giocatore = select.value;
-            
-            const field = squadra === 'a' ? 'mvp_a' : 'mvp_b';
-            
-            await supabase
-                .from('partite')
-                .update({ [field]: giocatore })
-                .eq('id', currentPartitaId);
-
-            await reloadCurrentReferto();
-        }
-
-        async function finalizzaPartita() {
-            if (!currentPartita.mvp_a || !currentPartita.mvp_b) {
-                alert('⚠️ Seleziona MVP per entrambe le squadre!');
-                return;
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(() => console.log('✓ PWA pronta'))
+                    .catch(err => console.log('Service Worker:', err));
             }
-
-            if (!confirm('Finalizzare la partita? Non sarà più modificabile.')) return;
-
-            const punteggioA = currentPartita.punteggio_a;
-            const punteggioB = currentPartita.punteggio_b;
-
-            let puntiA = 0, puntiB = 0;
-
-            if (punteggioA > punteggioB) {
-                puntiA = 3;
-                puntiB = 0;
-            } else if (punteggioB > punteggioA) {
-                puntiA = 0;
-                puntiB = 3;
-            } else {
-                puntiA = 1;
-                puntiB = 1;
-            }
-
-            await supabase
-                .from('partite')
-                .update({
-                    punti_a: puntiA,
-                    punti_b: puntiB,
-                    completata: true
-                })
-                .eq('id', currentPartitaId);
-
-            alert('✓ Partita finalizzata!');
-            tornaAllePartite();
-        }
-
-        // CLASSIFICHE E STATISTICHE
-        async function loadClassifica() {
-            const { data: partite } = await supabase
-                .from('partite')
-                .select('*')
-                .eq('completata', true);
-
-            const classifica = {};
-            partite.forEach(p => {
-                if (!classifica[p.squadra_a]) {
-                    classifica[p.squadra_a] = { g: 0, v: 0, n: 0, p: 0, gf: 0, gs: 0, pt: 0 };
-                }
-                if (!classifica[p.squadra_b]) {
-                    classifica[p.squadra_b] = { g: 0, v: 0, n: 0, p: 0, gf: 0, gs: 0, pt: 0 };
-                }
-
-                classifica[p.squadra_a].g++;
-                classifica[p.squadra_b].g++;
-                classifica[p.squadra_a].gf += p.punteggio_a;
-                classifica[p.squadra_a].gs += p.punteggio_b;
-                classifica[p.squadra_b].gf += p.punteggio_b;
-                classifica[p.squadra_b].gs += p.punteggio_a;
-                classifica[p.squadra_a].pt += p.punti_a;
-                classifica[p.squadra_b].pt += p.punti_b;
-
-                if (p.punti_a === 3) classifica[p.squadra_a].v++;
-                else if (p.punti_a === 1) classifica[p.squadra_a].n++;
-                else classifica[p.squadra_a].p++;
-
-                if (p.punti_b === 3) classifica[p.squadra_b].v++;
-                else if (p.punti_b === 1) classifica[p.squadra_b].n++;
-                else classifica[p.squadra_b].p++;
-            });
-
-            const classificaArray = Object.keys(classifica).map(team => ({
-                team,
-                ...classifica[team],
-                dr: classifica[team].gf - classifica[team].gs
-            })).sort((a, b) => b.pt - a.pt || b.dr - a.dr);
-
-            const tbody = document.getElementById('classificaGenerale');
-            tbody.innerHTML = classificaArray.map((c, i) => `
-                <tr class="border-b border-gray-700 hover:bg-gray-700">
-                    <td class="px-4 py-3 font-bold">${i + 1}</td>
-                    <td class="px-4 py-3">${c.team}</td>
-                    <td class="px-4 py-3 text-center font-bold text-cyan-400">${c.pt}</td>
-                    <td class="px-4 py-3 text-center">${c.g}</td>
-                    <td class="px-4 py-3 text-center text-green-400">${c.v}</td>
-                    <td class="px-4 py-3 text-center text-yellow-400">${c.n}</td>
-                    <td class="px-4 py-3 text-center text-red-400">${c.p}</td>
-                    <td class="px-4 py-3 text-center">${c.gf}</td>
-                    <td class="px-4 py-3 text-center">${c.gs}</td>
-                    <td class="px-4 py-3 text-center ${c.dr > 0 ? 'text-green-400' : c.dr < 0 ? 'text-red-400' : ''}">${c.dr > 0 ? '+' : ''}${c.dr}</td>
-                </tr>
-            `).join('');
-        }
-
-        async function loadStatistiche() {
-            const { data: partite } = await supabase
-                .from('partite')
-                .select('*')
-                .eq('completata', true);
-
-            const marcatori = {};
-            partite.forEach(p => {
-                (p.gol_a || []).forEach(g => marcatori[g] = (marcatori[g] || 0) + 1);
-                (p.gol_b || []).forEach(g => marcatori[g] = (marcatori[g] || 0) + 1);
-            });
-            const topMarcatori = Object.keys(marcatori)
-                .map(g => ({ name: g, gol: marcatori[g] }))
-                .sort((a, b) => b.gol - a.gol)
-                .slice(0, 10);
-
-            document.getElementById('topMarcatori').innerHTML = topMarcatori.map((m, i) => `
-                <div class="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
-                    <span><span class="font-bold text-yellow-400">${i + 1}.</span> ${m.name}</span>
-                    <span class="bg-yellow-400 text-gray-900 px-3 py-1 rounded font-bold">${m.gol} ⚽</span>
-                </div>
-            `).join('');
-
-            const scalpiatori = {};
-            partite.forEach(p => {
-                (p.scalpi_a || []).forEach(s => scalpiatori[s] = (scalpiatori[s] || 0) + 1);
-                (p.scalpi_b || []).forEach(s => scalpiatori[s] = (scalpiatori[s] || 0) + 1);
-            });
-            const topScalpiatori = Object.keys(scalpiatori)
-                .map(s => ({ name: s, scalpi: scalpiatori[s] }))
-                .sort((a, b) => b.scalpi - a.scalpi)
-                .slice(0, 10);
-
-            document.getElementById('topScalpiatori').innerHTML = topScalpiatori.map((s, i) => `
-                <div class="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
-                    <span><span class="font-bold text-red-400">${i + 1}.</span> ${s.name}</span>
-                    <span class="bg-red-400 text-white px-3 py-1 rounded font-bold">${s.scalpi} 🎯</span>
-                </div>
-            `).join('');
-
-            const vuotatori = {};
-            partite.forEach(p => {
-                (p.vuoti_a || []).forEach(v => vuotatori[v] = (vuotatori[v] || 0) + 1);
-                (p.vuoti_b || []).forEach(v => vuotatori[v] = (vuotatori[v] || 0) + 1);
-            });
-            const topVuotatori = Object.keys(vuotatori)
-                .map(v => ({ name: v, vuoti: vuotatori[v] }))
-                .sort((a, b) => b.vuoti - a.vuoti)
-                .slice(0, 10);
-
-            document.getElementById('topVuotatori').innerHTML = topVuotatori.map((v, i) => `
-                <div class="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
-                    <span><span class="font-bold text-orange-400">${i + 1}.</span> ${v.name}</span>
-                    <span class="bg-orange-400 text-white px-3 py-1 rounded font-bold">${v.vuoti} ❌</span>
-                </div>
-            `).join('');
-
-            const mvps = {};
-            partite.forEach(p => {
-                if (p.mvp_a) mvps[p.mvp_a] = (mvps[p.mvp_a] || 0) + 1;
-                if (p.mvp_b) mvps[p.mvp_b] = (mvps[p.mvp_b] || 0) + 1;
-            });
-            const topMVPs = Object.keys(mvps)
-                .map(m => ({ name: m, count: mvps[m] }))
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 10);
-
-            document.getElementById('topMVP').innerHTML = topMVPs.map((m, i) => `
-                <div class="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
-                    <span><span class="font-bold text-cyan-400">${i + 1}.</span> ${m.name}</span>
-                    <span class="bg-cyan-400 text-gray-900 px-3 py-1 rounded font-bold">${m.count} ⭐</span>
-                </div>
-            `).join('');
-        }
-
-        // INIT
-        document.addEventListener('DOMContentLoaded', () => {
-            checkAuth();
-            
-            // Event listeners per login
-            document.getElementById('emailInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') login();
-            });
-            
-            // Event listeners per bottoni (dopo che l'app è caricata)
-            setTimeout(() => {
-                // Bottoni squadre
-                const btnImportSquadre = document.getElementById('btnImportSquadre');
-                const btnAggiungiSquadra = document.getElementById('btnAggiungiSquadra');
-                
-                if (btnImportSquadre) {
-                    btnImportSquadre.addEventListener('click', importSquadre);
-                }
-                if (btnAggiungiSquadra) {
-                    btnAggiungiSquadra.addEventListener('click', aggiungiSquadraManuale);
-                }
-                
-                // Bottoni partite
-                const btnImportPartite = document.getElementById('btnImportPartite');
-                const btnAggiungiPartita = document.getElementById('btnAggiungiPartita');
-                
-                if (btnImportPartite) {
-                    btnImportPartite.addEventListener('click', importPartite);
-                }
-                if (btnAggiungiPartita) {
-                    btnAggiungiPartita.addEventListener('click', aggiungiPartitaManuale);
-                }
-                
-                console.log('✅ Event listeners configurati');
-            }, 1000);
         });
     </script>
 </body>
