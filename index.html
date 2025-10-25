@@ -185,7 +185,8 @@
     <script>
         // CONFIGURAZIONE SUPABASE - MODIFICA QUI!
         const SUPABASE_URL = 'https://jvpbpitwdosgtxdkfwqe.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2cGJwaXR3ZG9zZ3R4ZGtmd3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyODg0ODEsImV4cCI6MjA3Njg2NDQ4MX0.UksYZ5XF86lxTiVoL9mMU9pubOFbpOE-OdwkBzpF-V8'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2cGJwaXR3ZG9zZ3R4ZGtmd3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyODg0ODEsImV4cCI6MjA3Njg2NDQ4MX0.UksYZ5XF86lxTiVoL9mMU9pubOFbpOE-OdwkBzpF-V8';
+        
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // WHITELIST EMAIL - AGGIUNGI LA TUA EMAIL QUI!
@@ -314,60 +315,123 @@
 
         async function importSquadre() {
             const url = document.getElementById('sheetUrlSquadre').value.trim();
+            
+            console.log('🔍 Import squadre avviato');
+            console.log('URL inserito:', url);
+            
             if (!url) {
                 alert('Inserisci URL Google Sheets');
                 return;
             }
 
-            const csvUrl = url.replace('/edit#gid=', '/export?format=csv&gid=').replace('/edit?usp=sharing', '/export?format=csv');
+            // Converti URL in formato export CSV
+            let csvUrl = url;
+            if (url.includes('/edit')) {
+                csvUrl = url.replace('/edit#gid=', '/export?format=csv&gid=')
+                           .replace('/edit?usp=sharing', '/export?format=csv')
+                           .replace('/edit', '/export?format=csv');
+            }
             
-            Papa.parse(csvUrl, {
-                download: true,
-                header: true,
-                complete: async function(results) {
-                    const rows = results.data.filter(row => row.Squadra && row.Numero && row.Nome);
-                    
-                    if (rows.length === 0) {
-                        alert('Nessun dato valido trovato');
-                        return;
-                    }
-
-                    for (const row of rows) {
-                        await supabase.from('squadre').insert({
-                            nome_squadra: row.Squadra.trim(),
-                            numero: parseInt(row.Numero),
-                            nome_giocatore: row.Nome.trim()
+            console.log('URL CSV:', csvUrl);
+            
+            try {
+                Papa.parse(csvUrl, {
+                    download: true,
+                    header: true,
+                    complete: async function(results) {
+                        console.log('📊 Dati ricevuti:', results);
+                        
+                        const rows = results.data.filter(row => {
+                            const hasData = row.Squadra && row.Numero && row.Nome;
+                            if (!hasData) {
+                                console.log('❌ Riga ignorata:', row);
+                            }
+                            return hasData;
                         });
-                    }
+                        
+                        console.log('✅ Righe valide:', rows.length);
+                        
+                        if (rows.length === 0) {
+                            alert('Nessun dato valido trovato. Verifica che le colonne si chiamino: Squadra, Numero, Nome');
+                            return;
+                        }
 
-                    alert(`Importate ${rows.length} righe!`);
-                    loadSquadre();
-                },
-                error: function(error) {
-                    alert('Errore import: ' + error.message);
-                }
-            });
+                        let importati = 0;
+                        for (const row of rows) {
+                            const { error } = await supabase.from('squadre').insert({
+                                nome_squadra: row.Squadra.trim(),
+                                numero: parseInt(row.Numero),
+                                nome_giocatore: row.Nome.trim()
+                            });
+                            
+                            if (!error) {
+                                importati++;
+                            } else {
+                                console.error('Errore inserimento:', error, row);
+                            }
+                        }
+
+                        alert(`✅ Importate ${importati} su ${rows.length} righe!`);
+                        loadSquadre();
+                    },
+                    error: function(error) {
+                        console.error('❌ Errore PapaParse:', error);
+                        alert('Errore import: ' + error.message + '\n\nAssicurati che il foglio Google sia pubblico!');
+                    }
+                });
+            } catch (error) {
+                console.error('❌ Errore generale:', error);
+                alert('Errore: ' + error.message);
+            }
         }
 
         async function aggiungiSquadraManuale() {
+            console.log('📝 Aggiungi squadra manuale avviato');
+            
             const nomeSquadra = prompt('Nome squadra:');
-            if (!nomeSquadra) return;
+            if (!nomeSquadra) {
+                console.log('❌ Annullato - nessun nome squadra');
+                return;
+            }
+
+            console.log('Squadra:', nomeSquadra);
+            let count = 0;
 
             while (true) {
-                const numero = prompt('Numero maglia (lascia vuoto per finire):');
-                if (!numero) break;
+                const numero = prompt(`Numero maglia (lascia vuoto per finire):\n\nSquadra: ${nomeSquadra}\nGiocatori aggiunti: ${count}`);
+                if (!numero) {
+                    console.log('✅ Fine inserimento');
+                    break;
+                }
 
-                const nome = prompt('Nome giocatore:');
-                if (!nome) break;
+                const nome = prompt(`Nome giocatore:\n\nSquadra: ${nomeSquadra}\nNumero: ${numero}`);
+                if (!nome) {
+                    console.log('❌ Annullato - nessun nome');
+                    break;
+                }
 
-                await supabase.from('squadre').insert({
+                console.log('Inserisco:', { nomeSquadra, numero, nome });
+                
+                const { error } = await supabase.from('squadre').insert({
                     nome_squadra: nomeSquadra.trim(),
                     numero: parseInt(numero),
                     nome_giocatore: nome.trim()
                 });
+                
+                if (error) {
+                    console.error('Errore inserimento:', error);
+                    alert('Errore: ' + error.message);
+                    break;
+                } else {
+                    count++;
+                    console.log('✅ Giocatore aggiunto');
+                }
             }
 
-            loadSquadre();
+            if (count > 0) {
+                alert(`✅ Aggiunti ${count} giocatori!`);
+                loadSquadre();
+            }
         }
 
         // GESTIONE PARTITE
@@ -486,63 +550,121 @@
 
         async function importPartite() {
             const url = document.getElementById('sheetUrlPartite').value.trim();
+            
+            console.log('🔍 Import partite avviato');
+            console.log('URL inserito:', url);
+            
             if (!url) {
                 alert('Inserisci URL Google Sheets');
                 return;
             }
 
-            const csvUrl = url.replace('/edit#gid=', '/export?format=csv&gid=').replace('/edit?usp=sharing', '/export?format=csv');
+            // Converti URL in formato export CSV
+            let csvUrl = url;
+            if (url.includes('/edit')) {
+                csvUrl = url.replace('/edit#gid=', '/export?format=csv&gid=')
+                           .replace('/edit?usp=sharing', '/export?format=csv')
+                           .replace('/edit', '/export?format=csv');
+            }
             
-            Papa.parse(csvUrl, {
-                download: true,
-                header: true,
-                complete: async function(results) {
-                    const rows = results.data.filter(row => row.Campo && row.Orario && row.SquadraA && row.SquadraB);
-                    
-                    if (rows.length === 0) {
-                        alert('Nessun dato valido trovato');
-                        return;
-                    }
-
-                    for (const row of rows) {
-                        await supabase.from('partite').insert({
-                            campo: parseInt(row.Campo),
-                            orario: row.Orario.trim(),
-                            squadra_a: row.SquadraA.trim(),
-                            squadra_b: row.SquadraB.trim()
+            console.log('URL CSV:', csvUrl);
+            
+            try {
+                Papa.parse(csvUrl, {
+                    download: true,
+                    header: true,
+                    complete: async function(results) {
+                        console.log('📊 Dati ricevuti:', results);
+                        
+                        const rows = results.data.filter(row => {
+                            const hasData = row.Campo && row.Orario && row.SquadraA && row.SquadraB;
+                            if (!hasData) {
+                                console.log('❌ Riga ignorata:', row);
+                            }
+                            return hasData;
                         });
-                    }
+                        
+                        console.log('✅ Righe valide:', rows.length);
+                        
+                        if (rows.length === 0) {
+                            alert('Nessun dato valido trovato. Verifica che le colonne si chiamino: Campo, Orario, SquadraA, SquadraB');
+                            return;
+                        }
 
-                    alert(`Importate ${rows.length} partite!`);
-                    loadPartite();
-                },
-                error: function(error) {
-                    alert('Errore import: ' + error.message);
-                }
-            });
+                        let importate = 0;
+                        for (const row of rows) {
+                            const { error } = await supabase.from('partite').insert({
+                                campo: parseInt(row.Campo),
+                                orario: row.Orario.trim(),
+                                squadra_a: row.SquadraA.trim(),
+                                squadra_b: row.SquadraB.trim()
+                            });
+                            
+                            if (!error) {
+                                importate++;
+                            } else {
+                                console.error('Errore inserimento:', error, row);
+                            }
+                        }
+
+                        alert(`✅ Importate ${importate} su ${rows.length} partite!`);
+                        loadPartite();
+                    },
+                    error: function(error) {
+                        console.error('❌ Errore PapaParse:', error);
+                        alert('Errore import: ' + error.message + '\n\nAssicurati che il foglio Google sia pubblico!');
+                    }
+                });
+            } catch (error) {
+                console.error('❌ Errore generale:', error);
+                alert('Errore: ' + error.message);
+            }
         }
 
         async function aggiungiPartitaManuale() {
+            console.log('📝 Aggiungi partita manuale avviata');
+            
             const campo = prompt('Numero campo:');
-            if (!campo) return;
+            if (!campo) {
+                console.log('❌ Annullato');
+                return;
+            }
 
             const orario = prompt('Orario (es. 10:30):');
-            if (!orario) return;
+            if (!orario) {
+                console.log('❌ Annullato');
+                return;
+            }
 
             const squadraA = prompt('Squadra A:');
-            if (!squadraA) return;
+            if (!squadraA) {
+                console.log('❌ Annullato');
+                return;
+            }
 
             const squadraB = prompt('Squadra B:');
-            if (!squadraB) return;
+            if (!squadraB) {
+                console.log('❌ Annullato');
+                return;
+            }
 
-            await supabase.from('partite').insert({
+            console.log('Inserisco partita:', { campo, orario, squadraA, squadraB });
+
+            const { error } = await supabase.from('partite').insert({
                 campo: parseInt(campo),
                 orario: orario.trim(),
                 squadra_a: squadraA.trim(),
                 squadra_b: squadraB.trim()
             });
-
-            loadPartite();
+            
+            if (error) {
+                console.error('Errore inserimento:', error);
+                alert('Errore: ' + error.message);
+            } else {
+                console.log('✅ Partita aggiunta');
+                alert('✅ Partita aggiunta!');
+                loadPartite();
+            }
         }
 
         // REFERTO PARTITA + TIMER
