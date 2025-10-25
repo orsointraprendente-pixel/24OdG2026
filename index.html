@@ -216,10 +216,21 @@
                             this.fermaTimer();
                         }
                     }
-                    this.render();
+                    this.aggiornaTimerDisplay();
                 }, 1000);
 
                 this.render();
+            },
+
+            aggiornaTimerDisplay() {
+                const timerEl = document.getElementById('timer-display');
+                if (timerEl) {
+                    timerEl.textContent = this.formatoTempo(this.secondi);
+                }
+                const tempoEl = document.getElementById('tempo-display');
+                if (tempoEl) {
+                    tempoEl.textContent = `Tempo ${this.tempo}/2`;
+                }
             },
 
             fermaTimer() {
@@ -274,14 +285,20 @@
                             header: true,
                             skipEmptyLines: true,
                             complete: (results) => {
-                                this.squadre = {};
+                                // MANTIENI le squadre esistenti e aggiungi le nuove
                                 results.data.forEach(row => {
                                     const sq = row.Squadra || row.squadra;
                                     const num = parseInt(row.Numero || row.numero);
                                     const nome = row.Nome || row.nome;
                                     if (sq && num && nome) {
-                                        if (!this.squadre[sq]) this.squadre[sq] = [];
-                                        this.squadre[sq].push({ numero: num, nome });
+                                        if (!this.squadre[sq]) {
+                                            this.squadre[sq] = [];
+                                        }
+                                        // Evita duplicati
+                                        const giocatoreEsiste = this.squadre[sq].some(g => g.numero === num && g.nome === nome);
+                                        if (!giocatoreEsiste) {
+                                            this.squadre[sq].push({ numero: num, nome });
+                                        }
                                     }
                                 });
                                 this.salvaSquadre();
@@ -470,7 +487,14 @@
                     updates[`punteggio${squadra}`] = nuovi.length;
                 }
                 
-                this.aggiornaPartita(id, updates);
+                // Aggiorna direttamente senza fermare il timer
+                const idx = this.partite.findIndex(x => x.id === id);
+                if (idx !== -1) {
+                    this.partite[idx] = { ...p, ...updates };
+                }
+                
+                this.salvaPartitaAsync(id, updates);
+                this.render();
             },
 
             aggiungiVuotoBtn(id, squadra) {
@@ -502,22 +526,50 @@
                     alert(`🟥 ESPULSIONE!\n${giocatore} ha 3 vuoti ed è stato espulso.`);
                 }
                 
-                this.aggiornaPartita(id, updates);
+                // Aggiorna direttamente senza fermare il timer
+                const idx = this.partite.findIndex(x => x.id === id);
+                if (idx !== -1) {
+                    this.partite[idx] = { ...p, ...updates };
+                }
+                
+                this.salvaPartitaAsync(id, updates);
+                this.render();
             },
 
             azzeraVuoti(id, squadra) {
                 if (!confirm(`Azzerare i vuoti del 1° tempo?`)) return;
-                this.aggiornaPartita(id, { 
+                
+                const p = this.partite.find(x => x.id === id);
+                const updates = { 
                     [`vuoti${squadra}`]: [],
                     [`espulsi${squadra}`]: []
-                });
+                };
+                
+                // Aggiorna direttamente senza fermare il timer
+                const idx = this.partite.findIndex(x => x.id === id);
+                if (idx !== -1) {
+                    this.partite[idx] = { ...p, ...updates };
+                }
+                
+                this.salvaPartitaAsync(id, updates);
+                this.render();
             },
 
             rientraEspulso(id, squadra, giocatore) {
                 if (!confirm(`Far rientrare ${giocatore}?`)) return;
                 const p = this.partite.find(x => x.id === id);
                 const espulsi = p[`espulsi${squadra}`].filter(e => e !== giocatore);
-                this.aggiornaPartita(id, { [`espulsi${squadra}`]: espulsi });
+                
+                const updates = { [`espulsi${squadra}`]: espulsi };
+                
+                // Aggiorna direttamente senza fermare il timer
+                const idx = this.partite.findIndex(x => x.id === id);
+                if (idx !== -1) {
+                    this.partite[idx] = { ...p, ...updates };
+                }
+                
+                this.salvaPartitaAsync(id, updates);
+                this.render();
             },
 
             finalizzaPartitaForm(id) {
@@ -980,8 +1032,8 @@
                                         <span class="text-green-300 text-sm">✓ Completata</span>
                                     ` : `
                                         <div class="bg-gray-700 rounded-lg p-4 text-center">
-                                            <div class="text-4xl font-bold text-cyan-400 mb-2 font-mono">${tempoDurante}</div>
-                                            <div class="text-sm text-gray-300 mb-3">Tempo ${this.tempo}/2</div>
+                                            <div id="timer-display" class="text-4xl font-bold text-cyan-400 mb-2 font-mono">${tempoDurante}</div>
+                                            <div id="tempo-display" class="text-sm text-gray-300 mb-3">Tempo ${this.tempo}/2</div>
                                             <div class="flex gap-2">
                                                 ${!this.timerAttivo ? `
                                                     <button onclick="app.avviaTimer(${p.id})" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded font-semibold text-sm">▶ Avvia</button>
