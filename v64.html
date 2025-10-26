@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0e7490">
+    <title>24OdG - Torneo Arbitri</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div id="app"></div>
+    
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm';
+
+        const SUPABASE_URL = 'https://bflagmexshprrbigcjzj.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmbGFnbWV4c2hwcnJiaWdjanpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyMTk3MDMsImV4cCI6MjA3NTc5NTcwM30.29WDB3dfj9a2jOjTJRT28nQcjMqEXoDdfWXTWMNJbE8';
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        window.supabase = supabase;
+
+        const ARBITRI_AUTORIZZATI = [
+            'arbitro1@24odg.it',
+            'arbitro2@24odg.it',
+            'arbitro3@24odg.it',
+            'arbitro4@24odg.it',
+            'arbitro5@24odg.it',
+        ];
+
+        window.app = {
+            partite: [],
+            squadre: {},
+            connesso: false,
+            vista: 'partite',
+            sottovista: 'tutte',
+            partitaSelezionata: null,
+            filtroCampo: 'tutti',
+            filtroOrario: 'tutti',
+            utenteAutenticato: null,
+            emailUtente: '',
+            
+            // Timer
+            timerPartitaId: null,
+            timerTempo: 1,
+            timerSecondi: 0,
+            timerAttivo: false,
+            timerInterval: null,
+
+            async init() {
+                const emailSalvata = localStorage.getItem('arbitro_email');
+                if (emailSalvata && ARBITRI_AUTORIZZATI.includes(emailSalvata)) {
+                    this.utenteAutenticato = emailSalvata;
+                    this.emailUtente = emailSalvata;
+                    await this.caricaSquadre();
+                    await this.caricaPartite();
+                    this.sottoscrivi();
+                    this.render();
+                } else {
+                    this.renderLogin();
+                }
+            },
+
+            renderLogin() {
+                document.getElementById('app').innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
+                        <div class="bg-gray-800 rounded-lg shadow-2xl border border-gray-700 p-8 max-w-md w-full">
+                            <div class="text-center mb-8">
+                                <h1 class="text-4xl font-bold text-cyan-400 mb-2">24OdG</h1>
+                                <p class="text-gray-400">Torneo Arbitri</p>
+                            </div>
+                            
+                            <form onsubmit="app.effettuaLogin(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm mb-2 text-gray-300">Email Arbitro</label>
+                                    <input type="email" id="email-input" placeholder="arbitro@24odg.it" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-3 text-white focus:border-cyan-500 focus:outline-none" required>
+                                </div>
+                                
+                                <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded mt-6">
+                                    🔑 Accedi
+                                </button>
+                            </form>
+                            
+                            <div class="mt-6 p-4 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg">
+                                <p class="text-xs text-blue-300">
+                                    <span class="font-bold">ℹ️ Nota:</span> Solo arbitri autorizzati possono accedere.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            effettuaLogin(event) {
+                event.preventDefault();
+                const email = document.getElementById('email-input').value.trim();
+                
+                if (!ARBITRI_AUTORIZZATI.includes(email)) {
+                    alert('❌ Email non autorizzata.');
+                    return;
+                }
+                
+                this.utenteAutenticato = email;
+                this.emailUtente = email;
+                localStorage.setItem('arbitro_email', email);
+                
+                this.caricaSquadre();
+                this.caricaPartite();
+                this.sottoscrivi();
+                this.render();
+            },
+
+            logout() {
+                if (!confirm('Vuoi effettuare il logout?')) return;
+                localStorage.removeItem('arbitro_email');
+                this.utenteAutenticato = null;
+                this.emailUtente = '';
+                this.renderLogin();
+            },
+
+            async caricaSquadre() {
+                try {
+                    const { data, error } = await supabase.from('squadre').select('*');
+                    if (error) throw error;
+                    
+                    this.squadre = {};
+                    data.forEach(row => {
+                        if (!this.squadre[row.nome_squadra]) {
+                            this.squadre[row.nome_squadra] = [];
+                        }
+                        this.squadre[row.nome_squadra].push({
+                            numero: row.numero,
+                            nome: row.nome_giocatore
+                        });
+                    });
+                } catch (error) {
+                    console.error('Errore caricamento squadre:', error);
+                }
+            },
+
+            async salvaSquadre() {
+                try {
+                    await supabase.from('squadre').delete().neq('id', 0);
+                    const rows = [];
+                    Object.keys(this.squadre).forEach(nomeSquadra => {
+                        this.squadre[nomeSquadra].forEach(g => {
+                            rows.push({
+                                nome_squadra: nomeSquadra,
+                                numero: g.numero,
+                                nome_giocatore: g.nome
+                            });
+                        });
+                    });
+                    if (rows.length > 0) {
+                        await supabase.from('squadre').insert(rows);
+                    }
+                } catch (error) {
+                    console.error('Errore salvataggio squadre:', error);
+                }
+            },
+
+            async caricaPartite() {
+                try {
+                    const { data, error } = await supabase.from('partite').select('*')
+                        .order('orario', { ascending: true })
+                        .order('campo', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    this.partite = data.map(row => ({
+                        id: row.id,
+                        campo: row.campo || 1,
+                        orario: row.orario || '',
+                        squadraA: row.squadra_a,
+                        squadraB: row.squadra_b,
+                        golA: row.gol_a || [],
+                        golB: row.gol_b || [],
+                        scalpiA: row.scalpi_a || [],
+                        scalpiB: row.scalpi_b || [],
+                        vuotiA: row.vuoti_a || [],
+                        vuotiB: row.vuoti_b || [],
+                        espulsiA: row.espulsi_a || [],
+                        espulsiB: row.espulsi_b || [],
+                        punteggioA: row.punteggio_a || 0,
+                        punteggioB: row.punteggio_b || 0,
+                        puntiA: row.punti_a || 0,
+                        puntiB: row.punti_b || 0,
+                        mvpA: row.mvp_a || '',
+                        mvpB: row.mvp_b || '',
+                        completata: row.completata || false
+                    }));
+                    
+                    this.connesso = true;
+                } catch (error) {
+                    console.error('Errore caricamento partite:', error);
+                    this.connesso = false;
+                }
+            },
+
+            sottoscrivi() {
+                supabase.channel('db-changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'partite' }, 
+                        async () => {
+                            await this.caricaPartite();
+                            this.render();
+                        }
+                    )
+                    .subscribe();
+            },
+
+            async aggiungiPartita(campo, orario, squadraA, squadraB) {
+                try {
+                    const { error } = await supabase.from('partite').insert([{
+                        campo, orario,
+                        squadra_a: squadraA, squadra_b: squadraB,
+                        gol_a: [], gol_b: [], scalpi_a: [], scalpi_b: [],
+                        vuoti_a: [], vuoti_b: [], espulsi_a: [], espulsi_b: [],
+                        punteggio_a: 0, punteggio_b: 0,
+                        punti_a: 0, punti_b: 0, mvp_a: '', mvp_b: '',
+                        completata: false
+                    }]);
+                    if (error) throw error;
+                } catch (error) {
+                    alert('Errore aggiunta partita: ' + error.message);
+                }
+            },
+
+            async aggiornaPartita(id, updates) {
+                try {
+                    const p = this.partite.find(x => x.id === id);
+                    const u = { ...p, ...updates };
+                    
+                    const { error } = await supabase.from('partite').update({
+                        squadra_a: u.squadraA, squadra_b: u.squadraB,
+                        gol_a: u.golA, gol_b: u.golB,
+                        scalpi_a: u.scalpiA, scalpi_b: u.scalpiB,
+                        vuoti_a: u.vuotiA, vuoti_b: u.vuotiB,
+                        espulsi_a: u.espulsiA, espulsi_b: u.espulsiB,
+                        punteggio_a: u.punteggioA, punteggio_b: u.punteggioB,
+                        punti_a: u.puntiA, punti_b: u.puntiB,
+                        mvp_a: u.mvpA, mvp_b: u.mvpB,
+                        completata: u.completata
+                    }).eq('id', id);
+                    
+                    if (error) throw error;
+                    
+                    const idx = this.partite.findIndex(x => x.id === id);
+                    if (idx !== -1) {
+                        this.partite[idx] = u;
+                    }
+                } catch (error) {
+                    console.error('Errore aggiornamento partita:', error);
+                }
+            },
+
+            async eliminaPartita(id) {
+                if (!confirm('Eliminare questa partita?')) return;
+                try {
+                    const { error } = await supabase.from('partite').delete().eq('id', id);
+                    if (error) throw error;
+                } catch (error) {
+                    console.error('Errore eliminazione partita:', error);
+                }
+            },
+
+            formatoTempo(secondi) {
+                const min = Math.floor(secondi / 60);
+                const sec = secondi % 60;
+                return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+            },
+
+            avviaTimer(partitaId) {
+                this.timerPartitaId = partitaId;
+                this.timerTempo = 1;
+                this.timerSecondi = 0;
+                this.timerAttivo = true;
+
+                if (this.timerInterval) clearInterval(this.timerInterval);
+
+                this.timerInterval = setInterval(() => {
+                    this.timerSecondi++;
+                    
+                    // Aggiorna display
+                    const display = document.getElementById('timer-live');
+                    if (display) {
+                        display.textContent = this.formatoTempo(this.timerSecondi);
+                    }
+
+                    // Salva in localStorage
+                    localStorage.setItem('timer_partita_' + partitaId, JSON.stringify({
+                        tempo: this.timerTempo,
+                        secondi: this.timerSecondi,
+                        startTime: Date.now()
+                    }));
+
+                    if (this.timerSecondi === 900) {
+                        if (this.timerTempo === 1) {
+                            alert('⏱️ FINE 1° TEMPO!');
+                            this.timerTempo = 2;
+                            this.timerSecondi = 0;
+                        } else {
+                            alert('🏁 FINE PARTITA!');
+                            this.fermaTimer();
+                        }
+                    }
+                }, 1000);
+            },
+
+            pausa() {
+                this.timerAttivo = false;
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                }
+            },
+
+            riprendi() {
+                if (!this.timerPartitaId) return;
+                this.timerAttivo = true;
+                this.avviaTimer(this.timerPartitaId);
+            },
+
+            fermaTimer() {
+                this.timerAttivo = false;
+                this.timerTempo = 1;
+                this.timerSecondi = 0;
+                this.timerPartitaId = null;
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                }
+                localStorage.removeItem('timer_partita_' + this.timerPartitaId);
+                this.render();
+            },
+
+            aggiungiElemento(id, squadra, tipo) {
+                const p = this.partite.find(x => x.id === id);
+                const inputId = `${tipo === 'scalpo' ? 'scalpo' : tipo}-${squadra}-${id}`;
+                const input = document.getElementById(inputId);
+                const val = input.tagName === 'SELECT' ? input.value : input.value.trim();
+                
+                if (!val) return;
+                
+                const key = tipo === 'gol' ? `gol${squadra}` : tipo === 'scalpo' ? `scalpi${squadra}` : null;
+                if (!key) return;
+                
+                const nuovi = [...p[key], val];
+                const updates = { [key]: nuovi };
+                
+                if (tipo === 'gol') {
+                    updates[`punteggio${squadra}`] = nuovi.length;
+                }
+                
+                this.aggiornaPartita(id, updates);
+                input.value = '';
+            },
+
+            rimuoviElemento(id, squadra, tipo, index) {
+                const p = this.partite.find(x => x.id === id);
+                const key = tipo === 'gol' ? `gol${squadra}` : tipo === 'scalpo' ? `scalpi${squadra}` : tipo === 'vuoto' ? `vuoti${squadra}` : null;
+                if (!key) return;
+                
+                const nuovi = [...p[key]];
+                nuovi.splice(index, 1);
+                const updates = { [key]: nuovi };
+                
+                if (tipo === 'gol') {
+                    updates[`punteggio${squadra}`] = nuovi.length;
+                }
+                
+                this.aggiornaPartita(id, updates);
+            },
+
+            aggiungiVuotoBtn(id, squadra) {
+                const input = document.getElementById(`vuoto-${squadra}-${id}`);
+                const val = input.tagName === 'SELECT' ? input.value : input.value.trim();
+                
+                if (!val) return;
+                
+                const p = this.partite.find(x => x.id === id);
+                if (p[`espulsi${squadra}`].includes(val)) {
+                    alert('🟥 Giocatore già espulso!');
+                    return;
+                }
+                
+                this.aggiungiVuoto(id, squadra, val);
+                input.value = '';
+            },
+
+            aggiungiVuoto(id, squadra, giocatore) {
+                const p = this.partite.find(x => x.id === id);
+                const vuoti = [...p[`vuoti${squadra}`], giocatore];
+                const conteggio = vuoti.filter(v => v === giocatore).length;
+                
+                let updates = { [`vuoti${squadra}`]: vuoti };
+                
+                if (conteggio === 3) {
+                    const espulsi = [...p[`espulsi${squadra}`], giocatore];
+                    updates[`espulsi${squadra}`] = espulsi;
+                    alert(`🟥 ESPULSIONE!\n${giocatore} ha 3 vuoti ed è stato espulso.`);
+                }
+                
+                this.aggiornaPartita(id, updates);
+            },
+
+            azzeraVuoti(id, squadra) {
+                if (!confirm(`Azzerare i vuoti del 1° tempo?`)) return;
+                this.aggiornaPartita(id, { 
+                    [`vuoti${squadra}`]: [],
+                    [`espulsi${squadra}`]: []
+                });
+            },
+
+            rientraEspulso(id, squadra, giocatore) {
+                if (!confirm(`Far rientrare ${giocatore}?`)) return;
+                const p = this.partite.find(x => x.id === id);
+                const espulsi = p[`espulsi${squadra}`].filter(e => e !== giocatore);
+                this.aggiornaPartita(id, { [`espulsi${squadra}`]: espulsi });
+            },
+
+            render() {
+                const completate = this.partite.filter(p => p.completata).length;
+                
+                document.getElementById('app').innerHTML = `
+                    <div class="max-w-6xl mx-auto p-4">
+                        <header class="mb-8">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <h1 class="text-3xl font-bold text-cyan-400">24OdG</h1>
+                                    <div class="px-3 py-1 rounded-full text-sm ${this.connesso ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}">
+                                        ${this.connesso ? '🟢 Online' : '🔴 Offline'}
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="text-sm text-gray-400">
+                                        <span class="text-cyan-300 font-semibold">${this.emailUtente}</span>
+                                    </div>
+                                    <button onclick="app.logout()" class="px-3 py-1 rounded bg-red-900 hover:bg-red-800 text-red-300 text-sm font-semibold">
+                                        🚪 Logout
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-center text-gray-400 mt-3">Partite: ${this.partite.length} | Completate: ${completate} | Squadre: ${Object.keys(this.squadre).length}</p>
+                        </header>
+
+                        <div class="space-y-4">
+                            ${this.partite.map(p => `
+                                <div onclick="app.partitaSelezionata=${p.id};app.render()" class="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-cyan-500 transition">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1">
+                                            <div class="text-sm text-gray-400">Campo ${p.campo} • ${p.orario}</div>
+                                            <div class="text-lg font-bold mt-2">
+                                                <span class="text-cyan-300">${p.squadraA}</span>
+                                                <span class="text-gray-500 mx-2">vs</span>
+                                                <span class="text-cyan-300">${p.squadraB}</span>
+                                            </div>
+                                            ${p.completata ? `
+                                                <div class="text-2xl font-bold text-yellow-400 mt-2">${p.punteggioA} - ${p.punteggioB}</div>
+                                            ` : `
+                                                <div class="text-sm text-gray-400 mt-2">Gol: ${p.golA.length}-${p.golB.length}</div>
+                                            `}
+                                        </div>
+                                        <div>
+                                            <span class="px-3 py-1 rounded-full text-sm font-semibold ${p.completata ? 'bg-green-900 text-green-300' : 'bg-blue-900 text-blue-300'}">
+                                                ${p.completata ? '✓ Completata' : '▶ In corso'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>
