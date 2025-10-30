@@ -1390,44 +1390,40 @@
                 `;
             },
 
-            renderStatistiche() {
-                const stats = this.calcolaStatistiche();
-                const renderLista = (titolo, emoji, lista, colorBg) => {
-                    if (lista.length === 0) return `<p class="text-gray-500">Nessun dato</p>`;
-                    return `
-                        <div class="space-y-2 max-h-96 overflow-y-auto">
-                            ${lista.map((item, i) => `
-                                <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3">
-                                    <div class="flex items-center gap-3">
-                                        <span class="font-bold ${i === 0 ? 'text-yellow-400 text-lg' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</span>
-                                        <span class="text-white text-sm">${item.nome}</span>
-                                    </div>
-                                    <span class="${colorBg} px-3 py-1 rounded-full font-bold text-sm">${item.gol || item.scalpi || item.vuoti || item.volte}${item.volte ? 'x' : ''}</span>
-                                </div>
-                            `).join('')}
+renderStatistiche() {
+    const stats = this.calcolaStatistiche();
+    const renderLista = (titolo, emoji, lista, colorBg) => {
+        if (lista.length === 0) return `<p class="text-gray-500">Nessun dato</p>`;
+        return `
+            <div class="space-y-2 max-h-96 overflow-y-auto">
+                ${lista.map((item, i) => `
+                    <div class="flex justify-between items-center bg-gray-700 rounded px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold ${i === 0 ? 'text-yellow-400 text-lg' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-400'}">${i + 1}</span>
+                            <span class="text-white text-sm">${item.nome}</span>
                         </div>
-                    `;
-                };
-                
-                document.getElementById('contenuto').innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">⚽ Marcatori (${stats.marcatori.length})</h2>
-                            ${renderLista('Marcatori', '⚽', stats.marcatori, 'bg-cyan-900 text-cyan-300')}
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">🔪 Scalpi (${stats.scalpiatori.length})</h2>
-                            ${renderLista('Scalpi', '🔪', stats.scalpiatori, 'bg-red-900 text-red-300')}
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">🔵 Vuoti (${stats.vuotatori.length})</h2>
-                            ${renderLista('Vuoti', '🔵', stats.vuotatori, 'bg-blue-900 text-blue-300')}
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                            <h2 class="text-xl font-semibold mb-4 text-cyan-400">⭐ MVP (${stats.mvps.length})</h2>
-                            ${renderLista('MVP', '⭐', stats.mvps, 'bg-purple-900 text-purple-300')}
-                        </div>
+                        <span class="${colorBg} px-3 py-1 rounded-full font-bold text-sm">${item.gol || item.scalpi || item.vuoti || item.volte}${item.volte ? 'x' : ''}</span>
                     </div>
+                `).join('')}
+            </div>
+        `;
+    };
+    
+    document.getElementById('contenuto').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                <h2 class="text-xl font-semibold mb-4 text-cyan-400">⚽ Marcatori (${stats.marcatori.length})</h2>
+                ${renderLista('Marcatori', '⚽', stats.marcatori, 'bg-cyan-900 text-cyan-300')}
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
+                <h2 class="text-xl font-semibold mb-4 text-cyan-400">🔪 Scalpi (${stats.scalpiatori.length})</h2>
+                ${renderLista('Scalpi', '🔪', stats.scalpiatori, 'bg-red-900 text-red-300')}
+            </div>
+            <div class="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700 md:col-span-2">
+                <h2 class="text-xl font-semibold mb-4 text-cyan-400">⭐ MVP (${stats.mvps.length})</h2>
+                ${renderLista('MVP', '⭐', stats.mvps, 'bg-purple-900 text-purple-300')}
+            </div>
+        </div>
                 `;
             },
 
