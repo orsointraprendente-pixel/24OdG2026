@@ -1646,22 +1646,6 @@ renderStatistiche() {
                             </div>
                         </div>
 
-<div class="mb-6">
-    <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-            <span class="text-orange-400 text-xl">⚠️</span>
-            <span class="font-bold text-gray-200">Falli di Difesa</span>
-        </div>
-        <div class="text-2xl font-bold ${p[`falliDifesa${squadra}`] >= 2 ? 'text-red-400' : 'text-orange-400'}">
-            ${p[`falliDifesa${squadra}`]}/3
-        </div>
-    </div>
-    <button onclick="app.aggiungiFalloDifesa(${p.id}, '${squadra}')" class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-bold">
-        + Aggiungi Fallo
-    </button>
-    ${p[`falliDifesa${squadra}`] >= 2 ? '<p class="text-xs text-red-400 mt-2 text-center">⚠️ Attenzione! Prossimo fallo = metà</p>' : ''}
-</div>
-
                         <div>
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2">
@@ -1700,6 +1684,22 @@ renderStatistiche() {
                                 }).join('')}
                             </div>
                         </div>
+
+                        <div class="mb-6">
+    <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+            <span class="text-orange-400 text-xl">⚠️</span>
+            <span class="font-bold text-gray-200">Falli di Difesa</span>
+        </div>
+        <div class="text-2xl font-bold ${p[`falliDifesa${squadra}`] >= 2 ? 'text-red-400' : 'text-orange-400'}">
+            ${p[`falliDifesa${squadra}`]}/3
+        </div>
+    </div>
+    <button onclick="app.aggiungiFalloDifesa(${p.id}, '${squadra}')" class="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-bold">
+        + Aggiungi Fallo
+    </button>
+    ${p[`falliDifesa${squadra}`] >= 2 ? '<p class="text-xs text-red-400 mt-2 text-center">⚠️ Attenzione! Prossimo fallo = metà</p>' : ''}
+</div>
                     </div>
                 `;
             },
