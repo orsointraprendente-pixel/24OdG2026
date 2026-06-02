@@ -1185,7 +1185,7 @@ generaPDF(id) {
                             complete: (results) => {
                                 results.data.forEach(row => {
                                     const sq = row.Squadra || row.squadra;
-                                    const num = parseInt(row.Numero ?? row.numero);
+                                    const num = parseFloat(row.Numero ?? row.numero);
                                     const nome = row.Nome || row.nome;
                                     if (sq && !isNaN(num) && nome) {
                                         if (!this.squadre[sq]) {
