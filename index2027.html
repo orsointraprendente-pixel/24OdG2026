@@ -1539,7 +1539,7 @@
                             <h2 class="text-xl font-semibold text-cyan-400 mb-6">📋 Assegnazione Partite</h2>
                             <div class="space-y-3">
                                 ${this.partite.filter(p => !p.completata).map(p => {
-                                    const arbitriAttivi = this.arbitriLista.filter(a => a.ruolo === 'arbitro');
+                                    const arbitriAttivi = this.arbitriLista.filter(a => a.attivo);
                                     return `
                                     <div class="bg-gray-700 rounded-lg px-4 py-3">
                                         <div class="flex items-center justify-between flex-wrap gap-3">
