@@ -1518,10 +1518,7 @@
                                             ${!a.attivo ? '<span class="ml-2 text-xs text-red-400">disabilitato</span>' : ''}
                                         </div>
                                         <div class="flex gap-2">
-                                            <button onclick="app.adminCambiaRuolo('${a.email}','${a.ruolo}')"
-                                                class="text-xs bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded">
-                                                ${a.ruolo === 'organizzatore' ? '→ Arbitro' : '→ Org.'}
-                                            </button>
+                                            
                                             <button onclick="app.adminToggleArbitro('${a.email}', ${a.attivo})"
                                                 class="text-xs ${a.attivo ? 'bg-red-700 hover:bg-red-600' : 'bg-green-700 hover:bg-green-600'} text-white px-2 py-1 rounded">
                                                 ${a.attivo ? 'Disabilita' : 'Abilita'}
