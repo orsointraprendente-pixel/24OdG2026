@@ -1,0 +1,28 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # Ogni 6 giorni alle 03:00 UTC, per stare sotto la soglia dei 7 giorni di inattività
+    - cron: '0 3 */6 * *'
+  workflow_dispatch: {} # permette di lanciarlo anche manualmente da GitHub per testarlo
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping tabella arbitri
+        run: |
+          response=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/arbitri?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+
+          echo "HTTP status: $response"
+          cat /tmp/response.json
+
+          if [ "$response" -ne 200 ]; then
+            echo "::error::Ping a Supabase fallito con status $response"
+            exit 1
+          fi
+
+          echo "Ping riuscito, progetto Supabase mantenuto attivo."
